@@ -1,0 +1,5 @@
+*.bak
+Documentation/html
+Documentation/Doxygen/dap.dxy
+Documentation/Doxygen/*.csv
+/obj
