@@ -39,7 +39,7 @@ extern "C" {
 #define SDI_PR_OPEN    1
 
 #ifndef SDI_PRINT
-#define SDI_PRINT   SDI_PR_CLOSE
+#define SDI_PRINT   SDI_PR_OPEN
 #endif
 
 void Delay_Init(void);

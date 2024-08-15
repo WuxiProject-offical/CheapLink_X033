@@ -42,12 +42,15 @@ void task_Blink(void *pvParameters)
 	vTaskDelete( NULL);
 }
 
+extern void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
+
 int main(void)
 {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	SystemCoreClockUpdate();
 	Delay_Init();
-	USART_Printf_Init(921600);
+	//USART_Printf_Init(921600);
+	SDI_Printf_Enable();
 	printf("SystemClk:%d\r\n", SystemCoreClock);
 	printf("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
 	printf("GPIO Toggle TEST\r\n");
@@ -61,6 +64,7 @@ int main(void)
 	USBFS_RCC_Init();
 	USBFS_Device_Init(ENABLE, PWR_VDD_3V3);
 	NVIC_EnableIRQ(USBFS_IRQn);
+	SetVTFIRQ((u32)USBFS_IRQHandler,USBFS_IRQn,0,ENABLE);
 
 	xTaskCreate((TaskFunction_t) task_Blink, (const char*) "Blink",
 			(uint16_t) 256, (void*) NULL, (UBaseType_t) 5,
