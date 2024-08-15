@@ -14,6 +14,8 @@
 
 #include "usbqueue.h"
 
+#define UDPRINT PRINT
+
 /*******************************************************************************/
 /* Variable Definition */
 /* Global */
@@ -42,7 +44,7 @@ volatile uint8_t USBFS_Endp_Busy[DEF_UEP_NUM];
 
 /******************************************************************************/
 /* Interrupt Service Routine Declaration*/
-void USBFS_IRQHandler(void) __attribute__((interrupt())); // __attribute__((section(".highcode")));
+void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 
 /*********************************************************************
  * @fn      USBFS_RCC_Init
@@ -236,9 +238,24 @@ void USBFS_IRQHandler(void)
 					if (USBFS_SetupReqType & USB_REQ_TYP_VENDOR)
 					{
 						/* Manufacturer request */
+#if MSOS_DESC == 1
+						if (USBFS_SetupReqCode == 0x11)
+						{
+							if (USBFS_SetupReqIndex == 0x0004 || USBFS_SetupReqIndex == 0x0005)
+							{
+								len = USBFS_SetupReqLen >= DEF_USBD_UEP0_SIZE ?
+								DEF_USBD_UEP0_SIZE : USBFS_SetupReqLen;
+								memcpy(USBFS_EP0_4Buf, pUSBFS_Descr, len);
+								USBFS_SetupReqLen -= len;
+								pUSBFS_Descr += len;
+								USBFSD->UEP0_TX_LEN = len;
+								USBFSD->UEP0_CTRL_H ^= USBFS_UEP_T_TOG;
+							}
+						}
+#elif MSOS_DESC == 2
 						if (USBFS_SetupReqCode == 0x01)
 						{ // vendorCode
-							if (USBFS_SetupReqIndex == 0x07)
+							if (USBFS_SetupReqIndex == 0x0007)
 							{
 								len = USBFS_SetupReqLen >= DEF_USBD_UEP0_SIZE ?
 										DEF_USBD_UEP0_SIZE : USBFS_SetupReqLen;
@@ -248,6 +265,7 @@ void USBFS_IRQHandler(void)
 								USBFSD->UEP0_TX_LEN = len;
 								USBFSD->UEP0_CTRL_H ^= USBFS_UEP_T_TOG;
 							}
+#endif
 						}
 					}
 				}
@@ -277,12 +295,12 @@ void USBFS_IRQHandler(void)
 				}
 				break;
 
-				/* end-point 1 data in interrupt */
-			case ( USBFS_UIS_TOKEN_IN | DEF_UEP1):
-				USBFSD->UEP1_CTRL_H ^= USBFS_UEP_T_TOG;
-				USBFSD->UEP1_CTRL_H = (USBFSD->UEP1_CTRL_H
+				/* end-point 2 data in interrupt */
+			case ( USBFS_UIS_TOKEN_IN | DEF_UEP2):
+				USBFSD->UEP2_CTRL_H ^= USBFS_UEP_T_TOG;
+				USBFSD->UEP2_CTRL_H = (USBFSD->UEP2_CTRL_H
 						& ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_NAK;
-				USBFS_Endp_Busy[ DEF_UEP1] = 0;
+				USBFS_Endp_Busy[ DEF_UEP2] = 0;
 				USBQueue_EpIN_Handler();
 				break;
 
@@ -320,9 +338,9 @@ void USBFS_IRQHandler(void)
 				}
 				break;
 
-				/* end-point 2 data out interrupt */
-			case USBFS_UIS_TOKEN_OUT | DEF_UEP2:
-				USBFSD->UEP2_CTRL_H ^= USBFS_UEP_R_TOG;
+				/* end-point 1 data out interrupt */
+			case USBFS_UIS_TOKEN_OUT | DEF_UEP1:
+				USBFSD->UEP1_CTRL_H ^= USBFS_UEP_R_TOG;
 				USBQueue_EpOUT_Handler(USBFSD->RX_LEN);
 				break;
 
@@ -379,8 +397,9 @@ void USBFS_IRQHandler(void)
 					{ // vendorCode
 						if (USBFS_SetupReqIndex == 0x0007)
 						{
+							UDPRINT("Requested MSOS2desc\n");
 							pUSBFS_Descr = (uint8_t *) MyWinusbDesc;
-							len = 170;
+							len = 162;
 						}
 					}
 #endif
@@ -456,7 +475,7 @@ void USBFS_IRQHandler(void)
 							len = StrDescCustom4[0];
 							break;
 #if MSOS_DESC == 1
-						case 0xee:
+							case 0xee:
 							pUSBFS_Descr = MsOs1Desc;
 							len = MsOs1Desc[0];
 							break;
@@ -470,6 +489,7 @@ void USBFS_IRQHandler(void)
 #if MSOS_DESC == 2
 					case USB_DESCR_TYP_BOS:
 						// BOS desc
+						UDPRINT("Requested BOS\n");
 						pUSBFS_Descr = MyBosDesc;
 						len = DEF_USBD_BOS_DESC_LEN;
 						break;
@@ -594,17 +614,17 @@ void USBFS_IRQHandler(void)
 							switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 							{
 							case ( DEF_UEP_IN | DEF_UEP1):
-								/* Set End-point 1 IN STALL */
+								/* Set End-point 1 OUT STALL */
 								USBFSD->UEP1_CTRL_H = ( USBFSD->UEP1_CTRL_H
-										& ~USBFS_UEP_T_RES_MASK)
-										| USBFS_UEP_T_RES_STALL;
+										& ~USBFS_UEP_R_RES_MASK)
+										| USBFS_UEP_R_RES_STALL;
 								break;
 
 							case ( DEF_UEP_OUT | DEF_UEP2):
-								/* Set End-point 2 OUT STALL */
+								/* Set End-point 2 IN STALL */
 								USBFSD->UEP2_CTRL_H = ( USBFSD->UEP2_CTRL_H
-										& ~USBFS_UEP_R_RES_MASK)
-										| USBFS_UEP_R_RES_STALL;
+										& ~USBFS_UEP_T_RES_MASK)
+										| USBFS_UEP_T_RES_STALL;
 								break;
 
 							default:
@@ -653,16 +673,16 @@ void USBFS_IRQHandler(void)
 						switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 						{
 						case ( DEF_UEP_IN | DEF_UEP1):
-							if (((USBFSD->UEP1_CTRL_H) & USBFS_UEP_T_RES_MASK)
-									== USBFS_UEP_T_RES_STALL)
+							if (((USBFSD->UEP1_CTRL_H) & USBFS_UEP_R_RES_MASK)
+									== USBFS_UEP_R_RES_STALL)
 							{
 								USBFS_EP0_4Buf[0] = 0x01;
 							}
 							break;
 
 						case ( DEF_UEP_OUT | DEF_UEP2):
-							if (((USBFSD->UEP2_CTRL_H) & USBFS_UEP_R_RES_MASK)
-									== USBFS_UEP_R_RES_STALL)
+							if (((USBFSD->UEP2_CTRL_H) & USBFS_UEP_T_RES_MASK)
+									== USBFS_UEP_T_RES_STALL)
 							{
 								USBFS_EP0_4Buf[0] = 0x01;
 							}

@@ -27,12 +27,12 @@
 /*
  * UQ_EP_UP: Defines the endpoint to upload data
  */
-#define UQ_EP_UP 			DEF_UEP1
+#define UQ_EP_UP 			DEF_UEP2
 
 /*
  * UQ_EP_DN: Defines the endpoint to receive data
  */
-#define UQ_EP_DN 			DEF_UEP2
+#define UQ_EP_DN 			DEF_UEP1
 
 extern volatile uint8_t USBFS_Endp_Busy[];
 

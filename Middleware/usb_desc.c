@@ -67,14 +67,14 @@ const uint8_t MyCfgDescr[] =
 		// 端点描述符
 		0x07,// 描述符大小
 		0x05,                // 描述符类型（是端点描述符）
-		0x02,                // 是EP2OUT
+		0x01,                // 是EP2OUT
 		0x02,                // 是批量传输
 		DEF_USBD_ENDP2_SIZE, 0x00, // 端点大小
 		0x00,                 // 无意义
 		// 端点描述符
 		0x07,// 描述符大小
 		0x05,                // 描述符类型（是端点描述符）
-		0x81,                // 是EP1IN
+		0x82,                // 是EP2IN
 		0x02,                // 是批量传输
 		DEF_USBD_ENDP1_SIZE, 0x00, // 端点大小
 		0x00,                 // 无意义
@@ -152,120 +152,119 @@ const uint8_t StrDescCustom4[] =
 #if MSOS_DESC == 1
 const uint8_t MsOs1Desc[] =
 {
-		// Str desc: "MSFT100"
-		18,// Desc length = 18
-		0x03,   // Str type desc
-		0x4d, 0x00, 0x53, 0x00, 0x46, 0x00, 0x54, 0x00, 0x31, 0x00, 0x30, 0x00,
-		0x30, 0x00, 0x11, 0x00 };
+	// Str desc: "MSFT100"
+	18,// Desc length = 18
+	0x03,// Str type desc
+	0x4d, 0x00, 0x53, 0x00, 0x46, 0x00, 0x54, 0x00, 0x31, 0x00, 0x30, 0x00,
+	0x30, 0x00, 0x11, 0x00};
 
 const uint8_t WCID1Desc[] =
-{ 0x28, 0x00, 0x00,
-		0x00, // Length 40
-		0x00,
-		0x01, // WCID1.0
-		0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, // First Interface 0
-		0x01, // ?
-		'W', 'I', 'N', 'U', 'S', 'B', 0x00,
-		0x00, // CompatibleID {'W', 'I', 'N', 'U', 'S', 'B', '\0', 0x00} for WINUSB
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00 };
+{	0x28, 0x00, 0x00,
+	0x00, // Length 40
+	0x00,
+	0x01,// WCID1.0
+	0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00,// First Interface 0
+	0x01,// ?
+	'W', 'I', 'N', 'U', 'S', 'B', 0x00,
+	0x00,// CompatibleID {'W', 'I', 'N', 'U', 'S', 'B', '\0', 0x00} for WINUSB
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00};
 
 const uint8_t WCID1DescEx[] =
-{ 0x8e, 0x00, 0x00,
-		0x00, // Length 142
-		0x00,
-		0x01, // WCID1.0
-		0x05, 0x00,
-		0x01,0x00,
-		132, 0x00, 0x00, 0x00,
-		0x01, 0x00, 0x00, 0x00,
-		40,
-		0x00,   // sizeof(struct MS_DEV_GUID_NAME)
-		// MS_DEV_GUID_NAME
-		'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I',
-		0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, 'a', 0x00,
-		'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 0, 0,
-		78,
-		0x00,0x00,0x00, // sizeof (struct MS_DEV_INT_GUID)
-		// MS_DEV_INT_GUID
-		'{', 0, 'C', 0, 'D', 0, 'B', 0, '3', 0, 'B', 0, '5', 0, 'A', 0, 'D', 0,
-		'-', 0, '2', 0, '9', 0, '3', 0, 'B', 0, '-', 0, '4', 0, '6', 0, '6', 0,
-		'3', 0, '-', 0, 'A', 0, 'A', 0, '3', 0, '6', 0, '-', 0, '1', 0, 'A', 0,
-		'A', 0, 'E', 0, '4', 0, '6', 0, '4', 0, '6', 0, '3', 0, '7', 0, '7', 0,
-		'6', 0, '}', 0, 0, 0 };
+{	0x8e, 0x00, 0x00,
+	0x00, // Length 142
+	0x00,
+	0x01,// WCID1.0
+	0x05, 0x00,
+	0x01,0x00,
+	132, 0x00, 0x00, 0x00,
+	0x01, 0x00, 0x00, 0x00,
+	40,
+	0x00,// sizeof(struct MS_DEV_GUID_NAME)
+	// MS_DEV_GUID_NAME
+	'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I',
+	0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, 'a', 0x00,
+	'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 0, 0,
+	78,
+	0x00,0x00,0x00,// sizeof (struct MS_DEV_INT_GUID)
+	// MS_DEV_INT_GUID
+	'{', 0, 'C', 0, 'D', 0, 'B', 0, '3', 0, 'B', 0, '5', 0, 'A', 0, 'D', 0,
+	'-', 0, '2', 0, '9', 0, '3', 0, 'B', 0, '-', 0, '4', 0, '6', 0, '6', 0,
+	'3', 0, '-', 0, 'A', 0, 'A', 0, '3', 0, '6', 0, '-', 0, '1', 0, 'A', 0,
+	'A', 0, 'E', 0, '4', 0, '6', 0, '4', 0, '6', 0, '3', 0, '7', 0, '7', 0,
+	'6', 0, '}', 0, 0, 0};
 #elif MSOS_DESC == 2
 const uint8_t MyBosDesc[] =
-{ 0x05,     // bNumPlatDesc
-		0x0f,     // bRequestType
-		40, 0x00, // sizeof(struct MS_BOS_DESCRIPTOR)
-		0x02,     // bNumPlatDesc
+{
+///////////////////////////////////////
+/// WCID20 BOS descriptor
+///////////////////////////////////////
+		0x05, /* bLength */
+		0x0f, /* bDescriptorType */
+		0x21, 0x00, /* wTotalLength */
+		0x01, /* bNumDeviceCaps */
 
-		0x07, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00,     // ?
-
-		33 - 5, // bDescLen
-		0x10,   // bDescType
-		0x05,   // bCapabilityType
-		0x00,   // bReserved
-
-		0xDF, 0x60, 0xDD, 0xD8, // MS OS 2.0 Platform Capability ID (D8DD60DF-4589-4CC7-9CD2-659D9E648A9F)
-		0x89, 0x45, 0xC7, 0x4C, 0x9C, 0xD2, 0x65, 0x9D, 0x9E, 0x64, 0x8A, 0x9F,
-
-		0x00, 0x00, 0x03, 0x06, // Windows version (8.1) (0x06030000)
-		170, 0x00,              // sizeof(struct MS_OS_DESC_SET_HEADER)
-		0x01,                   // bRequest used to get MS_OS_DESC_SET_HEADER
-		0x00                    // Doesn't support alternate enumeration
-		};
+		///////////////////////////////////////
+		/// WCID20 device capability descriptor
+		///////////////////////////////////////
+		0x1c, /* bLength */
+		0x10, /* bDescriptorType */
+		0x05, /* bDevCapabilityType */
+		0x00, /* bReserved */
+		0xdf, 0x60, 0xdd, 0xd8, 0x89, 0x45, 0xc7, 0x4c, /* bPlatformCapabilityUUID_16 */
+		0x9c, 0xd2, 0x65, 0x9d, 0x9e, 0x64, 0x8a, 0x9f, /* bPlatformCapabilityUUID_16 */
+		0x00, 0x00, 0x03, 0x06, /* dwWindowsVersion */
+		162, 0,/* wDescriptorSetTotalLength */
+		0x01, /* bVendorCode */
+		0x00, /* bAltEnumCode */
+};
 
 const uint8_t MyWinusbDesc[] =
-{ 0x0a,
-		0x00,             // wLength 0x0A
-		0x00,
-		0x00,             // wDescriptorType 0x0000
-		0x00, 0x00, 0x03,
-		0x06, // dwWindowsVersion 0x06030000
-		170,
-		0x00, // sizeof(struct MS_OS_DESC_SET_HEADER) including MS_FUNC_SUBSET_HEADER
+{
+///////////////////////////////////////
+/// WCID20 descriptor set descriptor
+///////////////////////////////////////
+		0x0a, 0x00, /* wLength */
+		0x00, 0x00, /* wDescriptorType */
+		0x00, 0x00, 0x03, 0x06, /* dwWindowsVersion */
+		0xa2, 0x00, /* wDescriptorSetTotalLength */
 
-		// MS_FUNC_SUBSET_HEADER
-		0x08,
-		0x00, // wLength 0x08
-		0x02,
-		0x00, // wDescriptorType 0x02
-		0x00,       // bFirstInterface
-		0x00,       // bReserved
-		160,
-		0x00, // sizeof(struct MS_FUNC_SUBSET_HEADER) including MS_COMP_ID_FEAT_DESC
+		///////////////////////////////////////
+		/// WCID20 compatible ID descriptor
+		///////////////////////////////////////
+		0x14, 0x00, /* wLength */
+		0x03, 0x00, /* wDescriptorType */
+		/* WINUSB */
+		'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00, /* cCID_8 */
+		/*  */
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, /* cSubCID_8 */
 
-		// MS_COMP_ID_FEAT_DESC
-		0x14,
-		0x00,                                     // wLength 0x14
-		0x03,
-		0x00,                                     // wDescriptorType  0x03
-		'W', 'I', 'N', 'U', 'S', 'B', 0x00,
-		0x00, // CompatibleID {'W', 'I', 'N', 'U', 'S', 'B', '\0', 0x00} for WINUSB
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, // SubCompatibleID 0x00
-
-		// MS_REG_PROP_DESC_GUID
-		132,
-		0x00,  // sizeof(struct MS_REG_PROP_DESC_GUID)
-		0x04,
-		0x00, // wDescriptorType 0x04
-		0x07,
-		0x00, // wStringType 0x07 - UTF-16 encoded null terminated strings
-		42,
-		0x00,   // sizeof(struct MS_DEV_GUID_NAME)
-		// MS_DEV_GUID_NAME
-		'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I',
-		0x00, 'n', 0x00, 't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, 'a', 0x00,
-		'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's',
-		0x00, 0x00, 0x00, 80,
-		0x00, // sizeof (struct MS_DEV_INT_GUID)
-		// MS_DEV_INT_GUID
-		'{', 0, 'C', 0, 'D', 0, 'B', 0, '3', 0, 'B', 0, '5', 0, 'A', 0, 'D', 0,
-		'-', 0, '2', 0, '9', 0, '3', 0, 'B', 0, '-', 0, '4', 0, '6', 0, '6', 0,
-		'3', 0, '-', 0, 'A', 0, 'A', 0, '3', 0, '6', 0, '-', 0, '1', 0, 'A', 0,
-		'A', 0, 'E', 0, '4', 0, '6', 0, '4', 0, '6', 0, '3', 0, '7', 0, '7', 0,
-		'6', 0, '}', 0, 0, 0, 0, 0 };
+		///////////////////////////////////////
+		/// WCID20 registry property descriptor
+		///////////////////////////////////////
+		0x84, 0x00, /* wLength */
+		0x04, 0x00, /* wDescriptorType */
+		0x07, 0x00, /* wPropertyDataType */
+		0x2a, 0x00, /* wPropertyNameLength */
+		/* DeviceInterfaceGUIDs */
+		'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, /* wcPropertyName_21 */
+		'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, /* wcPropertyName_21 */
+		't', 0x00, 'e', 0x00, 'r', 0x00, 'f', 0x00, /* wcPropertyName_21 */
+		'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, /* wcPropertyName_21 */
+		'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, /* wcPropertyName_21 */
+		0x00, 0x00, /* wcPropertyName_21 */
+		0x50, 0x00, /* wPropertyDataLength */
+		/* {CDB3B5AD-293B-4663-AA36-1AAE46463776} */
+		'{', 0x00, 'C', 0x00, 'D', 0x00, 'B', 0x00, /* wcPropertyData_40 */
+		'3', 0x00, 'B', 0x00, '5', 0x00, 'A', 0x00, /* wcPropertyData_40 */
+		'D', 0x00, '-', 0x00, '2', 0x00, '9', 0x00, /* wcPropertyData_40 */
+		'3', 0x00, 'B', 0x00, '-', 0x00, '4', 0x00, /* wcPropertyData_40 */
+		'6', 0x00, '6', 0x00, '3', 0x00, '-', 0x00, /* wcPropertyData_40 */
+		'A', 0x00, 'A', 0x00, '3', 0x00, '6', 0x00, /* wcPropertyData_40 */
+		'-', 0x00, '1', 0x00, 'A', 0x00, 'A', 0x00, /* wcPropertyData_40 */
+		'E', 0x00, '4', 0x00, '6', 0x00, '4', 0x00, /* wcPropertyData_40 */
+		'6', 0x00, '3', 0x00, '7', 0x00, '7', 0x00, /* wcPropertyData_40 */
+		'6', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00, /* wcPropertyData_40 */
+};
 #endif

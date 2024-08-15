@@ -26,8 +26,8 @@
 /* file version */
 #define DEF_FILE_VERSION             0x01
 /* usb device info define  */
-#define DEF_USB_VID                  0xC251
-#define DEF_USB_PID                  0xF000
+#define DEF_USB_VID                  0x0D28
+#define DEF_USB_PID                  0x0204
 /* USB device descriptor, device serial number(bcdDevice) */
 #define DEF_IC_PRG_VER               DEF_FILE_VERSION
 
@@ -60,7 +60,7 @@
 #define DEF_USBD_MANU_DESC_LEN       ((uint16_t)MyManuInfo[0])
 #define DEF_USBD_PROD_DESC_LEN       ((uint16_t)MyProdInfo[0])
 #define DEF_USBD_SN_DESC_LEN         ((uint16_t)MySerNumInfo[0])
-#define DEF_USBD_BOS_DESC_LEN         40
+#define DEF_USBD_BOS_DESC_LEN         33
 
 /******************************************************************************/
 /* external variables */
