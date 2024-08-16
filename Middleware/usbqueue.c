@@ -27,27 +27,29 @@
 /*
  * UQ_EP_UP: Defines the endpoint to upload data
  */
-#define UQ_EP_UP 			DEF_UEP2
+#define UQ_EP_UP DEF_UEP2
 
 /*
  * UQ_EP_DN: Defines the endpoint to receive data
  */
-#define UQ_EP_DN 			DEF_UEP1
+#define UQ_EP_DN DEF_UEP1
 
 extern volatile uint8_t USBFS_Endp_Busy[];
 
 // Prepare data for IN endpoint upload.
 uint8_t USBQueue_EPUpload(uint8_t *buf, uint16_t len)
 {
-	while(USBFS_Endp_Busy[UQ_EP_UP])
-	{	;}
+	while (USBFS_Endp_Busy[UQ_EP_UP])
+	{
+		;
+	}
 	return USBFS_Endp_DataUp(UQ_EP_UP, buf, len, DEF_UEP_DMA_LOAD);
 }
 
 // Prepare buffer for OUT transaction.
 void USBQueue_SetEPDNAddr(uint8_t *buffer)
 {
-	USBFSD->UEP2_DMA = (uint32_t) buffer;
+	USBFSD->UEP1_DMA = (uint32_t)buffer;
 }
 
 // Control the OUT(downstream) endpoint ACK status.
@@ -56,41 +58,25 @@ void USBQueue_SetEPDNAck(FunctionalState state)
 	if (DISABLE == state)
 	{
 		// NAK
-		USBFSD->UEP2_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
-		USBFSD->UEP2_CTRL_H |= USBFS_UEP_R_RES_NAK;
+		USBFSD->UEP1_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
+		USBFSD->UEP1_CTRL_H |= USBFS_UEP_R_RES_NAK;
 	}
 	else
 	{
 		// ACK
-		USBFSD->UEP2_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
-		USBFSD->UEP2_CTRL_H |= USBFS_UEP_R_RES_ACK;
+		USBFSD->UEP1_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
+		USBFSD->UEP1_CTRL_H |= USBFS_UEP_R_RES_ACK;
 	}
-}
-
-// This function should be re-implemented as your need.
-__attribute__((weak))
-  uint8_t USBQueue_UserProcessor(uint8_t *inData,
-		uint8_t inLen, uint8_t *outData)
-{
-	uint8_t outLen = 0;
-	/* Handle request here.
-	 *  - Input data:
-	 *    - uint8_t * inData	: 	incoming USB packet
-	 *    - uint8_t inLen		:	length of incoming USB packet
-	 *  - Output data:
-	 *    - uint8_t *outData	:	USB packet you want to response
-	 *    - [return value]		:	length of your response packet
-	 */
-
-	return outLen;
 }
 
 // ##PORT_IMPLEMENTION_END##
 
-#define MEMCLEAR(x) (memset((x),0x00,sizeof((x))))
+#include "DAP.h"
 
-__attribute__ ((aligned(4))) volatile uint8_t UQ_InQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
-__attribute__ ((aligned(4))) volatile uint8_t UQ_OutQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
+#define MEMCLEAR(x) (memset((x), 0x00, sizeof((x))))
+
+__attribute__((aligned(4))) volatile uint8_t UQ_InQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
+__attribute__((aligned(4))) volatile uint8_t UQ_OutQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
 static volatile uint8_t UQ_InLen[UQ_QUEUELEN], UQ_OutLen[UQ_QUEUELEN];
 static volatile uint8_t UQ_InPtrIn = 0, UQ_InPtrOut = 0;
 static volatile uint8_t UQ_InCntIn = 0, UQ_InCntOut = 0;
@@ -114,16 +100,28 @@ void USBQueue_StatusReset()
 	// If other reset operation required, process below.
 }
 
+#include "FreeRTOS.h"
+#include "task.h"
+extern TaskHandle_t taskHandleDAP;
+
 void USBQueue_EpOUT_Handler(uint8_t len)
 {
-	UQ_InLen[UQ_InPtrIn] = len;
-	UQ_InPtrIn++;
-	if (UQ_InPtrIn >= UQ_QUEUELEN) // loopback
+	if (UQ_InQueue[UQ_InPtrIn][0] == ID_DAP_TransferAbort)
 	{
-		UQ_InPtrIn = 0;
+		DAP_TransferAbort = 1U;
 	}
-	UQ_InCntIn++;
-	if ((uint8_t) (UQ_InCntIn - UQ_InCntOut) != UQ_QUEUELEN)
+	else
+	{
+		UQ_InLen[UQ_InPtrIn] = len;
+		UQ_InPtrIn++;
+		if (UQ_InPtrIn >= UQ_QUEUELEN) // loopback
+		{
+			UQ_InPtrIn = 0;
+		}
+		UQ_InCntIn++;
+		xTaskNotifyFromISR(taskHandleDAP, 0x01, eSetBits, NULL);
+	}
+	if ((uint8_t)(UQ_InCntIn - UQ_InCntOut) != UQ_QUEUELEN)
 	{
 		USBQueue_SetEPDNAddr(UQ_InQueue[UQ_InPtrIn]);
 		USBQueue_SetEPDNAck(ENABLE);
@@ -157,13 +155,32 @@ void USBQueue_EpIN_Handler()
 uint8_t USBQueue_DoProcess()
 {
 	uint8_t n, flagProcessed = 0;
+	uint32_t taskFlag = 0;
 	while (UQ_InCntIn != UQ_InCntOut)
 	{ // Unhandled request in queue
+	  // Prepare DAP cmds
 		n = UQ_InPtrOut;
+		while (UQ_InQueue[n][0] == ID_DAP_QueueCommands)
+		{
+			UQ_InQueue[n][0] = ID_DAP_ExecuteCommands;
+			n++;
+			if (n == UQ_QUEUELEN)
+			{
+				n = 0U;
+			}
+			if (n == UQ_InPtrIn)
+			{
+				xTaskNotifyWait(0x0, 0xffffffffUL, (uint32_t *)&taskFlag, portMAX_DELAY);
+				if (taskFlag & 0x80U)
+				{
+					break;
+				}
+			}
+		}
 		// Start to process
-		UQ_OutLen[UQ_OutPtrIn] = (uint8_t)USBQueue_UserProcessor(UQ_InQueue[UQ_InPtrOut], UQ_InLen[UQ_InPtrOut], UQ_OutQueue[UQ_OutPtrIn]);
+		UQ_OutLen[UQ_OutPtrIn] = (uint8_t)DAP_ExecuteCommand(UQ_InQueue[UQ_InPtrOut], UQ_OutQueue[UQ_OutPtrIn]);
 		UQ_InPtrOut++;
-		if (UQ_InPtrOut == UQ_QUEUELEN)// loopback
+		if (UQ_InPtrOut == UQ_QUEUELEN) // loopback
 		{
 			UQ_InPtrOut = 0U;
 		}
@@ -182,7 +199,7 @@ uint8_t USBQueue_DoProcess()
 
 		// Update Response Index and Count
 		UQ_OutPtrIn++;
-		if (UQ_OutPtrIn == UQ_QUEUELEN)// loopback
+		if (UQ_OutPtrIn == UQ_QUEUELEN) // loopback
 		{
 			UQ_OutPtrIn = 0U;
 		}

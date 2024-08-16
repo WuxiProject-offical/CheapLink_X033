@@ -33,9 +33,9 @@ volatile uint8_t USBFS_DevSleepStatus;
 volatile uint8_t USBFS_DevEnumStatus;
 
 /* Endpoint Buffer */
-__attribute__((aligned(4)))  uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
+__attribute__((aligned(4)))    uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
 #if DAP_WITH_CDC
-__attribute__((aligned(4)))  uint8_t USBFS_EP3_Buf[DEF_USBD_ENDP3_SIZE * 2];
+__attribute__((aligned(4)))    uint8_t USBFS_EP3_Buf[DEF_USBD_ENDP3_SIZE * 2];
 #endif
 
 /* USB IN Endpoint Busy Flag */
@@ -174,170 +174,34 @@ void USBFS_Device_Init(FunctionalState sta, PWR_VDD VDD_Voltage)
 uint8_t USBFS_Endp_DataUp(uint8_t endp, uint8_t *pbuf, uint16_t len,
 		uint8_t mod)
 {
-	uint8_t endp_mode;
-	uint8_t buf_load_offset;
-	uint16_t *uep_tx_len;
-	uint16_t *uep_ctrl;
-	uint8_t *uep_dma;
-
-	switch (endp)
-	{
-	case 1:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP1_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP1_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP1_DMA;
-		break;
-	case 2:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP2_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP2_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP2_DMA;
-		break;
-	case 3:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP3_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP3_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP3_DMA;
-		break;
-	case 4:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP4_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP4_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP0_DMA;
-		break;
-	case 5:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP5_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP5_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP5_DMA;
-		break;
-	case 6:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP6_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP6_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP6_DMA;
-		break;
-	case 7:
-		uep_tx_len = (uint16_t *) &USBFSD->UEP7_TX_LEN;
-		uep_ctrl = (uint16_t *) &USBFSD->UEP7_CTRL_H;
-		uep_dma = (uint8_t *) &USBFSD->UEP7_DMA;
-		break;
-	default:
-		break;
-	}
 
 	/* DMA config, endp_ctrl config, endp_len config */
 	if ((endp >= DEF_UEP1) && (endp <= DEF_UEP7))
 	{
 		if (USBFS_Endp_Busy[endp] == 0)
 		{
-			if ((endp == DEF_UEP1) || (endp == DEF_UEP4))
+			/* Set end-point busy */
+			USBFS_Endp_Busy[endp] = 0x01;
+			switch (endp)
 			{
-				/* endp1/endp4 */
-				endp_mode = USBFSD->UEP4_1_MOD;
-				if (endp == DEF_UEP1)
-				{
-					endp_mode = (uint8_t) (endp_mode >> 4);
-				}
-			}
-			else if ((endp == DEF_UEP2) || (endp == DEF_UEP3))
-			{
-				/* endp2/endp3 */
-				endp_mode = USBFSD->UEP2_3_MOD;
-				if (endp == DEF_UEP3)
-				{
-					endp_mode = (uint8_t) (endp_mode >> 4);
-				}
-			}
-			else
-			{
-				/* endp5/endp6/endp7 */
-				endp_mode = USBFSD->UEP567_MOD;
-				if (endp == DEF_UEP5)
-				{
-					endp_mode = (uint8_t) (endp_mode << 2);
-				}
-				else if (endp == DEF_UEP7)
-				{
-					endp_mode = (uint8_t) (endp_mode >> 2);
-				}
-
-				endp_mode &= 0xfe;
-			}
-
-			if (endp_mode & USBFSD_UEP_TX_EN)
-			{
-				if (endp_mode & USBFSD_UEP_RX_EN)
-				{
-					if (endp_mode & USBFSD_UEP_BUF_MOD)
-					{
-						if (*uep_ctrl & USBFS_UEP_T_TOG)
-						{
-							buf_load_offset = 192;
-						}
-						else
-						{
-							buf_load_offset = 128;
-						}
-					}
-					else
-					{
-						buf_load_offset = 64;
-					}
-				}
+			case DEF_UEP2:
+				/* only DMA mode */
+				USBFSD->UEP2_DMA = (uint32_t) pbuf;
+				USBFSD->UEP2_TX_LEN = len;
+				USBFSD->UEP2_CTRL_H = (USBFSD->UEP2_CTRL_H
+						& ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_ACK;
+				break;
+#if DAP_WITH_CDC
+			case DEF_UEP3:
+				if (mod == DEF_UEP_CPY_LOAD)
+					memcpy(USBFS_EP3_Buf, pbuf, len); // Copy
 				else
-				{
-					if (endp_mode & USBFSD_UEP_BUF_MOD)
-					{
-						/* double tx buffer */
-						if (*uep_ctrl & USBFS_UEP_T_TOG)
-						{
-							buf_load_offset = 64;
-						}
-						else
-						{
-							buf_load_offset = 0;
-						}
-					}
-					else
-					{
-						buf_load_offset = 0;
-					}
-				}
-
-				if (endp == DEF_UEP4)
-				{
-					buf_load_offset += 64;
-				}
-
-				if (buf_load_offset == 0)
-				{
-					if (mod == DEF_UEP_DMA_LOAD)
-					{
-						/* DMA mode */
-						*uep_dma = (uint16_t) (uint32_t) pbuf;
-					}
-					else
-					{
-						/* copy mode */
-						memcpy(
-								((uint8_t *) (*((volatile uint32_t *) (uep_dma)))
-										+ 0x20000000), pbuf, len);
-					}
-				}
-				else
-				{
-					memcpy(
-							((uint8_t *) (*((volatile uint32_t *) (uep_dma)))
-									+ 0x20000000) + buf_load_offset, pbuf, len);
-				}
-				/* tx length */
-				*uep_tx_len = len;
-				/* response ack */
-				*uep_ctrl = (*uep_ctrl & ~USBFS_UEP_T_RES_MASK)
-						| USBFS_UEP_T_RES_ACK;
-
-				/* Set end-point busy */
-				USBFS_Endp_Busy[endp] = 0x01;
-			}
-			else
-			{
-				return 1;
+					USBFSD->UEP3_DMA = (uint32_t) pbuf; // DMA
+				USBFSD->UEP3_TX_LEN = len;
+				USBFSD->UEP3_CTRL_H = (USBFSD->UEP3_CTRL_H
+						& ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_ACK;
+				break;
+#endif
 			}
 		}
 		else
@@ -784,14 +648,14 @@ void USBFS_IRQHandler(void)
 						{
 							switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 							{
-							case (DEF_UEP_IN | DEF_UEP1):
-								/* Set End-point 1 IN NAK */
-								USBFSD->UEP1_CTRL_H = USBFS_UEP_T_RES_NAK;
+							case (DEF_UEP_IN | DEF_UEP2):
+								/* Set End-point 2 IN NAK */
+								USBFSD->UEP2_CTRL_H = USBFS_UEP_T_RES_NAK;
 								break;
 
-							case (DEF_UEP_OUT | DEF_UEP2):
-								/* Set End-point 2 OUT ACK */
-								USBFSD->UEP2_CTRL_H = USBFS_UEP_R_RES_ACK;
+							case (DEF_UEP_OUT | DEF_UEP1):
+								/* Set End-point 1 OUT ACK */
+								USBFSD->UEP1_CTRL_H = USBFS_UEP_R_RES_ACK;
 								break;
 #if DAP_WITH_CDC
 							case (DEF_UEP_IN | DEF_UEP3):
@@ -855,14 +719,14 @@ void USBFS_IRQHandler(void)
 							/* Set end-points status stall */
 							switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 							{
-							case (DEF_UEP_IN | DEF_UEP1):
+							case (DEF_UEP_OUT | DEF_UEP1):
 								/* Set End-point 1 OUT STALL */
 								USBFSD->UEP1_CTRL_H = (USBFSD->UEP1_CTRL_H
 										& ~USBFS_UEP_R_RES_MASK)
 										| USBFS_UEP_R_RES_STALL;
 								break;
 
-							case (DEF_UEP_OUT | DEF_UEP2):
+							case (DEF_UEP_IN | DEF_UEP2):
 								/* Set End-point 2 IN STALL */
 								USBFSD->UEP2_CTRL_H = (USBFSD->UEP2_CTRL_H
 										& ~USBFS_UEP_T_RES_MASK)

@@ -18,10 +18,14 @@
 
 #include "debug.h"
 
-#include "ch32x035_usbfs_device.h"
-
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include "ch32x035_usbfs_device.h"
+#include "usbqueue.h"
+
+#include "DAP_config.h"
+#include "DAP.h"
 
 void task_Blink(void *pvParameters)
 {
@@ -42,18 +46,28 @@ void task_Blink(void *pvParameters)
 	vTaskDelete( NULL);
 }
 
+TaskHandle_t taskHandleDAP = NULL;
+void task_DAP(void *pvParameters)
+{
+	while(1)
+	{
+		xTaskNotifyWait(0x0, 0xffffffffUL, NULL, portMAX_DELAY);
+		USBQueue_DoProcess();
+	}
+	vTaskDelete( NULL);
+}
+
 extern void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 
 int main(void)
 {
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	SystemCoreClockUpdate();
 	Delay_Init();
-	//USART_Printf_Init(921600);
-	SDI_Printf_Enable();
+	USART_Printf_Init(921600);
+	//SDI_Printf_Enable();
 	printf("SystemClk:%d\r\n", SystemCoreClock);
 	printf("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
-	printf("GPIO Toggle TEST\r\n");
 
 	char snbuf[9];
 	snprintf(snbuf, 9, "%08X", (X035CHIPSN1 ^ ~X035CHIPSN2));
@@ -63,15 +77,18 @@ int main(void)
 	}
 	USBFS_RCC_Init();
 	USBFS_Device_Init(ENABLE, PWR_VDD_3V3);
+	SetVTFIRQ((u32) USBFS_IRQHandler, USBFS_IRQn, 0, ENABLE);
 	NVIC_EnableIRQ(USBFS_IRQn);
-	SetVTFIRQ((u32)USBFS_IRQHandler,USBFS_IRQn,0,ENABLE);
+	DAP_Setup();
 
 	xTaskCreate((TaskFunction_t) task_Blink, (const char*) "Blink",
-			(uint16_t) 256, (void*) NULL, (UBaseType_t) 5,
-			(TaskHandle_t*) NULL);
+			(uint16_t) 64, (void*) NULL, (UBaseType_t) 1, (TaskHandle_t*) NULL);
+
+	xTaskCreate((TaskFunction_t) task_DAP, (const char*) "DAP", (uint16_t) 256,
+			(void*) NULL, (UBaseType_t) 7, (TaskHandle_t*) &taskHandleDAP);
 
 	vTaskStartScheduler();
 
 	while(1)
-	{	;}
+	{;}
 }
