@@ -70,7 +70,7 @@ extern const uint8_t MyLangDescr[];
 extern const uint8_t MyManuInfo[];
 extern const uint8_t MyProdInfo[];
 extern uint8_t MySerNumInfo[];
-extern const uint8_t StrDescCustom4[];
+extern const uint8_t StrDescCustom5[];
 extern const uint8_t MsOs1Desc[];
 extern const uint8_t WCID1Desc[];
 extern const uint8_t WCID1DescEx[];

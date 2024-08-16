@@ -85,9 +85,6 @@ extern volatile uint8_t  USBFS_DevEnumStatus;
 /* USB IN Endpoint Busy Flag */
 extern volatile uint8_t  USBFS_Endp_Busy[ ];
 
-/* Interrupt Service Routine Declaration*/
-extern __attribute__ ((aligned(4))) uint8_t Data_Buffer[ ];
-
 /******************************************************************************/
 /* external functions */
 extern void USBFS_Device_Init( FunctionalState sta , PWR_VDD VDD_Voltage);

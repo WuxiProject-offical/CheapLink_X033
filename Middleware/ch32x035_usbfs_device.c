@@ -35,9 +35,10 @@ volatile uint8_t USBFS_DevSleepStatus;
 volatile uint8_t USBFS_DevEnumStatus;
 
 /* Endpoint Buffer */
-__attribute__ ((aligned(4))) uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
-__attribute__ ((aligned(4))) uint8_t USBFS_EP1_Buf[DEF_USBD_ENDP1_SIZE];
-__attribute__ ((aligned(4))) uint8_t USBFS_EP2_Buf[DEF_USBD_ENDP2_SIZE];
+__attribute__((aligned(4)))  uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
+#if DAP_WITH_CDC
+__attribute__((aligned(4)))  uint8_t USBFS_EP3_Buf[DEF_USBD_ENDP3_SIZE * 2];
+#endif
 
 /* USB IN Endpoint Busy Flag */
 volatile uint8_t USBFS_Endp_Busy[DEF_UEP_NUM];
@@ -55,8 +56,8 @@ void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(
  */
 void USBFS_RCC_Init(void)
 {
-	RCC_APB2PeriphClockCmd( RCC_APB2Periph_AFIO, ENABLE);
-	RCC_AHBPeriphClockCmd( RCC_AHBPeriph_USBFS, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_USBFS, ENABLE);
 }
 
 /*********************************************************************
@@ -69,19 +70,26 @@ void USBFS_RCC_Init(void)
 void USBFS_Device_Endp_Init(void)
 {
 
-	USBFSD->UEP4_1_MOD = USBFS_UEP1_TX_EN;
-	USBFSD->UEP2_3_MOD = USBFS_UEP2_RX_EN;
+	USBFSD->UEP4_1_MOD = USBFS_UEP1_RX_EN;
+#if DAP_WITH_CDC
+	USBFSD->UEP2_3_MOD = USBFS_UEP2_TX_EN | USBFS_UEP3_RX_EN | USBFS_UEP3_TX_EN;
+#else
+	USBFSD->UEP2_3_MOD = USBFS_UEP2_TX_EN;
+#endif
 
 	USBFSD->UEP0_DMA = (uint32_t) USBFS_EP0_4Buf;
-	USBFSD->UEP1_DMA = (uint32_t) USBFS_EP1_Buf;
-	USBFSD->UEP2_DMA = (uint32_t) USBFS_EP2_Buf;
+#if DAP_WITH_CDC
+	USBFSD->UEP3_DMA = (uint32_t) USBFS_EP3_Buf;
+#endif
 
 	USBFSD->UEP0_CTRL_H = USBFS_UEP_R_RES_ACK | USBFS_UEP_T_RES_NAK;
-	USBFSD->UEP2_CTRL_H = USBFS_UEP_R_RES_ACK;
-
-	USBFSD->UEP1_TX_LEN = 0;
-
-	USBFSD->UEP1_CTRL_H = USBFS_UEP_T_RES_NAK;
+	USBFSD->UEP1_CTRL_H = USBFS_UEP_R_RES_ACK;
+	USBFSD->UEP2_TX_LEN = 0;
+	USBFSD->UEP2_CTRL_H = USBFS_UEP_T_RES_NAK;
+#if DAP_WITH_CDC
+	USBFSD->UEP3_TX_LEN = 0;
+	USBFSD->UEP3_CTRL_H = USBFS_UEP_R_RES_ACK | USBFS_UEP_T_RES_NAK;
+#endif
 
 	/* Clear End-points Busy Status */
 	for (uint8_t i = 0; i < DEF_UEP_NUM; i++)
@@ -168,26 +176,170 @@ void USBFS_Device_Init(FunctionalState sta, PWR_VDD VDD_Voltage)
 uint8_t USBFS_Endp_DataUp(uint8_t endp, uint8_t *pbuf, uint16_t len,
 		uint8_t mod)
 {
+	uint8_t endp_mode;
+	uint8_t buf_load_offset;
+	uint16_t *uep_tx_len;
+	uint16_t *uep_ctrl;
+	uint8_t *uep_dma;
+
+	switch (endp)
+	{
+	case 1:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP1_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP1_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP1_DMA;
+		break;
+	case 2:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP2_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP2_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP2_DMA;
+		break;
+	case 3:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP3_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP3_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP3_DMA;
+		break;
+	case 4:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP4_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP4_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP0_DMA;
+		break;
+	case 5:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP5_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP5_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP5_DMA;
+		break;
+	case 6:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP6_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP6_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP6_DMA;
+		break;
+	case 7:
+		uep_tx_len = (uint16_t *) &USBFSD->UEP7_TX_LEN;
+		uep_ctrl = (uint16_t *) &USBFSD->UEP7_CTRL_H;
+		uep_dma = (uint8_t *) &USBFSD->UEP7_DMA;
+		break;
+	default:
+		break;
+	}
 
 	/* DMA config, endp_ctrl config, endp_len config */
 	if ((endp >= DEF_UEP1) && (endp <= DEF_UEP7))
 	{
 		if (USBFS_Endp_Busy[endp] == 0)
 		{
-			/* Set end-point busy */
-			USBFS_Endp_Busy[endp] = 0x01;
-			switch (endp)
+			if ((endp == DEF_UEP1) || (endp == DEF_UEP4))
 			{
-			case DEF_UEP1:
-				/* copy mode */
-				if (mod == DEF_UEP_CPY_LOAD)
-					memcpy(USBFS_EP1_Buf, pbuf, len);
+				/* endp1/endp4 */
+				endp_mode = USBFSD->UEP4_1_MOD;
+				if (endp == DEF_UEP1)
+				{
+					endp_mode = (uint8_t) (endp_mode >> 4);
+				}
+			}
+			else if ((endp == DEF_UEP2) || (endp == DEF_UEP3))
+			{
+				/* endp2/endp3 */
+				endp_mode = USBFSD->UEP2_3_MOD;
+				if (endp == DEF_UEP3)
+				{
+					endp_mode = (uint8_t) (endp_mode >> 4);
+				}
+			}
+			else
+			{
+				/* endp5/endp6/endp7 */
+				endp_mode = USBFSD->UEP567_MOD;
+				if (endp == DEF_UEP5)
+				{
+					endp_mode = (uint8_t) (endp_mode << 2);
+				}
+				else if (endp == DEF_UEP7)
+				{
+					endp_mode = (uint8_t) (endp_mode >> 2);
+				}
+
+				endp_mode &= 0xfe;
+			}
+
+			if (endp_mode & USBFSD_UEP_TX_EN)
+			{
+				if (endp_mode & USBFSD_UEP_RX_EN)
+				{
+					if (endp_mode & USBFSD_UEP_BUF_MOD)
+					{
+						if (*uep_ctrl & USBFS_UEP_T_TOG)
+						{
+							buf_load_offset = 192;
+						}
+						else
+						{
+							buf_load_offset = 128;
+						}
+					}
+					else
+					{
+						buf_load_offset = 64;
+					}
+				}
 				else
-					USBFSD->UEP1_DMA = (uint32_t) pbuf;
-				USBFSD->UEP1_TX_LEN = len;
-				USBFSD->UEP1_CTRL_H = (USBFSD->UEP1_CTRL_H
-						& ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_ACK;
-				break;
+				{
+					if (endp_mode & USBFSD_UEP_BUF_MOD)
+					{
+						/* double tx buffer */
+						if (*uep_ctrl & USBFS_UEP_T_TOG)
+						{
+							buf_load_offset = 64;
+						}
+						else
+						{
+							buf_load_offset = 0;
+						}
+					}
+					else
+					{
+						buf_load_offset = 0;
+					}
+				}
+
+				if (endp == DEF_UEP4)
+				{
+					buf_load_offset += 64;
+				}
+
+				if (buf_load_offset == 0)
+				{
+					if (mod == DEF_UEP_DMA_LOAD)
+					{
+						/* DMA mode */
+						*uep_dma = (uint16_t) (uint32_t) pbuf;
+					}
+					else
+					{
+						/* copy mode */
+						memcpy(
+								((uint8_t *) (*((volatile uint32_t *) (uep_dma)))
+										+ 0x20000000), pbuf, len);
+					}
+				}
+				else
+				{
+					memcpy(
+							((uint8_t *) (*((volatile uint32_t *) (uep_dma)))
+									+ 0x20000000) + buf_load_offset, pbuf, len);
+				}
+				/* tx length */
+				*uep_tx_len = len;
+				/* response ack */
+				*uep_ctrl = (*uep_ctrl & ~USBFS_UEP_T_RES_MASK)
+						| USBFS_UEP_T_RES_ACK;
+
+				/* Set end-point busy */
+				USBFS_Endp_Busy[endp] = 0x01;
+			}
+			else
+			{
+				return 1;
 			}
 		}
 		else
@@ -224,7 +376,7 @@ void USBFS_IRQHandler(void)
 		{
 		/* data-in stage processing */
 		case USBFS_UIS_TOKEN_IN:
-			switch (intst & ( USBFS_UIS_TOKEN_MASK | USBFS_UIS_ENDP_MASK))
+			switch (intst & (USBFS_UIS_TOKEN_MASK | USBFS_UIS_ENDP_MASK))
 			{
 			/* end-point 0 data in interrupt */
 			case USBFS_UIS_TOKEN_IN | DEF_UEP0:
@@ -243,8 +395,7 @@ void USBFS_IRQHandler(void)
 						{
 							if (USBFS_SetupReqIndex == 0x0004 || USBFS_SetupReqIndex == 0x0005)
 							{
-								len = USBFS_SetupReqLen >= DEF_USBD_UEP0_SIZE ?
-								DEF_USBD_UEP0_SIZE : USBFS_SetupReqLen;
+								len = USBFS_SetupReqLen >= DEF_USBD_UEP0_SIZE ? DEF_USBD_UEP0_SIZE : USBFS_SetupReqLen;
 								memcpy(USBFS_EP0_4Buf, pUSBFS_Descr, len);
 								USBFS_SetupReqLen -= len;
 								pUSBFS_Descr += len;
@@ -265,8 +416,8 @@ void USBFS_IRQHandler(void)
 								USBFSD->UEP0_TX_LEN = len;
 								USBFSD->UEP0_CTRL_H ^= USBFS_UEP_T_TOG;
 							}
-#endif
 						}
+#endif
 					}
 				}
 				else
@@ -296,13 +447,22 @@ void USBFS_IRQHandler(void)
 				break;
 
 				/* end-point 2 data in interrupt */
-			case ( USBFS_UIS_TOKEN_IN | DEF_UEP2):
+			case (USBFS_UIS_TOKEN_IN | DEF_UEP2):
 				USBFSD->UEP2_CTRL_H ^= USBFS_UEP_T_TOG;
 				USBFSD->UEP2_CTRL_H = (USBFSD->UEP2_CTRL_H
 						& ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_NAK;
-				USBFS_Endp_Busy[ DEF_UEP2] = 0;
+				USBFS_Endp_Busy[DEF_UEP2] = 0;
 				USBQueue_EpIN_Handler();
 				break;
+#if DAP_WITH_CDC
+// 	/* end-point 3 data in interrupt */
+// case (USBFS_UIS_TOKEN_IN | DEF_UEP3):
+// 	USBFSD->UEP3_CTRL_H ^= USBFS_UEP_T_TOG;
+// 	USBFSD->UEP3_CTRL_H = (USBFSD->UEP3_CTRL_H & ~USBFS_UEP_T_RES_MASK) | USBFS_UEP_T_RES_NAK;
+// 	USBFS_Endp_Busy[DEF_UEP3] = 0;
+// 	Uart.USB_Up_IngFlag = 0x00;
+// 	break;
+#endif
 
 			default:
 				break;
@@ -311,7 +471,7 @@ void USBFS_IRQHandler(void)
 
 			/* data-out stage processing */
 		case USBFS_UIS_TOKEN_OUT:
-			switch (intst & ( USBFS_UIS_TOKEN_MASK | USBFS_UIS_ENDP_MASK))
+			switch (intst & (USBFS_UIS_TOKEN_MASK | USBFS_UIS_ENDP_MASK))
 			{
 			/* end-point 0 data out interrupt */
 			case USBFS_UIS_TOKEN_OUT | DEF_UEP0:
@@ -322,7 +482,37 @@ void USBFS_IRQHandler(void)
 							!= USB_REQ_TYP_STANDARD)
 					{
 						/* Non-standard request end-point 0 Data download */
-						//USBFS_SetupReqLen = 0;
+#if DAP_WITH_CDC
+// USBFS_SetupReqLen = 0;
+// /* Non-standard request end-point 0 Data download */
+// if (USBFS_SetupReqCode == CDC_SET_LINE_CODING)
+// {
+// 	/* Save relevant parameters such as serial port baud rate */
+// 	/* The downlinked data is processed in the endpoint 0 OUT packet, the 7 bytes of the downlink are, in order
+// 	   4 bytes: baud rate value: lowest baud rate byte, next lowest baud rate byte, next highest baud rate byte, highest baud rate byte.
+// 	   1 byte: number of stop bits (0: 1 stop bit; 1: 1.5 stop bit; 2: 2 stop bits).
+// 	   1 byte: number of parity bits (0: None; 1: Odd; 2: Even; 3: Mark; 4: Space).
+// 	   1 byte: number of data bits (5,6,7,8,16); */
+// 	Uart.Com_Cfg[0] = USBFS_EP0_4Buf[0];
+// 	Uart.Com_Cfg[1] = USBFS_EP0_4Buf[1];
+// 	Uart.Com_Cfg[2] = USBFS_EP0_4Buf[2];
+// 	Uart.Com_Cfg[3] = USBFS_EP0_4Buf[3];
+// 	Uart.Com_Cfg[4] = USBFS_EP0_4Buf[4];
+// 	Uart.Com_Cfg[5] = USBFS_EP0_4Buf[5];
+// 	Uart.Com_Cfg[6] = USBFS_EP0_4Buf[6];
+// 	Uart.Com_Cfg[7] = DEF_UARTx_RX_TIMEOUT;
+
+// 	/* Save the baud rate of the current serial port */
+// 	baudrate = USBFS_EP0_4Buf[0];
+// 	baudrate += ((uint32_t)USBFS_EP0_4Buf[1] << 8);
+// 	baudrate += ((uint32_t)USBFS_EP0_4Buf[2] << 16);
+// 	baudrate += ((uint32_t)USBFS_EP0_4Buf[3] << 24);
+// 	Uart.Com_Cfg[7] = Uart.Rx_TimeOutMax;
+
+// 	/* UART initialization operation */
+// 	UART2_USB_Init();
+// }
+#endif
 					}
 					else
 					{
@@ -343,6 +533,30 @@ void USBFS_IRQHandler(void)
 				USBFSD->UEP1_CTRL_H ^= USBFS_UEP_R_TOG;
 				USBQueue_EpOUT_Handler(USBFSD->RX_LEN);
 				break;
+
+#if DAP_WITH_CDC
+// 	/* end-point 2 data out interrupt */
+// case USBFS_UIS_TOKEN_OUT | DEF_UEP2:
+// 	USBFSD->UEP2_CTRL_H ^= USBFS_UEP_R_TOG;
+
+// 	Uart.Tx_PackLen[Uart.Tx_LoadNum] = USBFSD->RX_LEN;
+// 	Uart.Tx_LoadNum++;
+// 	USBFSD->UEP2_DMA = (uint32_t)(uint8_t *)&UART2_Tx_Buf[(Uart.Tx_LoadNum * DEF_USB_FS_PACK_LEN)];
+// 	if (Uart.Tx_LoadNum >= DEF_UARTx_TX_BUF_NUM_MAX)
+// 	{
+// 		Uart.Tx_LoadNum = 0x00;
+// 		USBFSD->UEP2_DMA = (uint32_t)(uint8_t *)&UART2_Tx_Buf[0];
+// 	}
+// 	Uart.Tx_RemainNum++;
+
+// 	if (Uart.Tx_RemainNum >= (DEF_UARTx_TX_BUF_NUM_MAX - 2))
+// 	{
+// 		USBFSD->UEP2_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
+// 		USBFSD->UEP2_CTRL_H |= USBFS_UEP_R_RES_NAK;
+// 		Uart.USB_Down_StopFlag = 0x01;
+// 	}
+// 	break;
+#endif
 
 			default:
 				break;
@@ -370,6 +584,22 @@ void USBFS_IRQHandler(void)
 					/* Class requests */
 					switch (USBFS_SetupReqCode)
 					{
+#if DAP_WITH_CDC
+// case CDC_GET_LINE_CODING:
+// 	pUSBFS_Descr = (uint8_t *)&Uart.Com_Cfg[0];
+// 	len = 7;
+// 	break;
+
+// case CDC_SET_LINE_CODING:
+// 	break;
+
+// case CDC_SET_LINE_CTLSTE:
+// 	break;
+
+// case CDC_SEND_BREAK:
+// 	break;
+#endif
+
 					default:
 						errflag = 0xff;
 						break;
@@ -383,27 +613,30 @@ void USBFS_IRQHandler(void)
 					{
 						if (USBFS_SetupReqIndex == 0x0004)
 						{
-							pUSBFS_Descr = (uint8_t *) WCID1Desc;
+							pUSBFS_Descr = (uint8_t *)WCID1Desc;
 							len = 40;
 						}
 						else if (USBFS_SetupReqIndex == 0x0005)
 						{
-							pUSBFS_Descr = (uint8_t *) WCID1DescEx;
+							pUSBFS_Descr = (uint8_t *)WCID1DescEx;
 							len = 142;
 						}
 					}
-#elif MSOS_DESC==2
+#elif MSOS_DESC == 2
 					if (USBFS_SetupReqCode == 0x01)
 					{ // vendorCode
 						if (USBFS_SetupReqIndex == 0x0007)
 						{
 							UDPRINT("Requested MSOS2desc\n");
 							pUSBFS_Descr = (uint8_t *) MyWinusbDesc;
+#if DAP_WITH_CDC
+							len = 170;
+#else
 							len = 162;
+#endif
 						}
 					}
 #endif
-
 				}
 				else
 				{
@@ -469,11 +702,13 @@ void USBFS_IRQHandler(void)
 							len = DEF_USBD_SN_DESC_LEN;
 							break;
 
-							//
-						case 4:
-							pUSBFS_Descr = StrDescCustom4;
-							len = StrDescCustom4[0];
+#if DAP_WITH_CDC
+						case 5:
+							pUSBFS_Descr = StrDescCustom5;
+							len = StrDescCustom5[0];
 							break;
+#endif
+
 #if MSOS_DESC == 1
 							case 0xee:
 							pUSBFS_Descr = MsOs1Desc;
@@ -553,15 +788,26 @@ void USBFS_IRQHandler(void)
 						{
 							switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 							{
-							case ( DEF_UEP_IN | DEF_UEP1):
+							case (DEF_UEP_IN | DEF_UEP1):
 								/* Set End-point 1 IN NAK */
 								USBFSD->UEP1_CTRL_H = USBFS_UEP_T_RES_NAK;
 								break;
 
-							case ( DEF_UEP_OUT | DEF_UEP2):
+							case (DEF_UEP_OUT | DEF_UEP2):
 								/* Set End-point 2 OUT ACK */
 								USBFSD->UEP2_CTRL_H = USBFS_UEP_R_RES_ACK;
 								break;
+#if DAP_WITH_CDC
+							case (DEF_UEP_IN | DEF_UEP3):
+								/* Set End-point 3 IN NAK */
+								USBFSD->UEP3_CTRL_H = USBFS_UEP_T_RES_NAK;
+								break;
+
+							case (DEF_UEP_OUT | DEF_UEP3):
+								/* Set End-point 3 OUT ACK */
+								USBFSD->UEP3_CTRL_H = USBFS_UEP_R_RES_ACK;
+								break;
+#endif
 
 							default:
 								errflag = 0xFF;
@@ -613,19 +859,34 @@ void USBFS_IRQHandler(void)
 							/* Set end-points status stall */
 							switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 							{
-							case ( DEF_UEP_IN | DEF_UEP1):
+							case (DEF_UEP_IN | DEF_UEP1):
 								/* Set End-point 1 OUT STALL */
-								USBFSD->UEP1_CTRL_H = ( USBFSD->UEP1_CTRL_H
+								USBFSD->UEP1_CTRL_H = (USBFSD->UEP1_CTRL_H
 										& ~USBFS_UEP_R_RES_MASK)
 										| USBFS_UEP_R_RES_STALL;
 								break;
 
-							case ( DEF_UEP_OUT | DEF_UEP2):
+							case (DEF_UEP_OUT | DEF_UEP2):
 								/* Set End-point 2 IN STALL */
-								USBFSD->UEP2_CTRL_H = ( USBFSD->UEP2_CTRL_H
+								USBFSD->UEP2_CTRL_H = (USBFSD->UEP2_CTRL_H
 										& ~USBFS_UEP_T_RES_MASK)
 										| USBFS_UEP_T_RES_STALL;
 								break;
+#if DAP_WITH_CDC
+							case (DEF_UEP_IN | DEF_UEP3):
+								/* Set End-point 3 IN STALL */
+								USBFSD->UEP3_CTRL_H = (USBFSD->UEP3_CTRL_H
+										& ~USBFS_UEP_T_RES_MASK)
+										| USBFS_UEP_T_RES_STALL;
+								break;
+
+							case (DEF_UEP_OUT | DEF_UEP3):
+								/* Set End-point 3 OUT STALL */
+								USBFSD->UEP3_CTRL_H = (USBFSD->UEP3_CTRL_H
+										& ~USBFS_UEP_R_RES_MASK)
+										| USBFS_UEP_R_RES_STALL;
+								break;
+#endif
 
 							default:
 								errflag = 0xFF;
@@ -672,7 +933,7 @@ void USBFS_IRQHandler(void)
 					{
 						switch ((uint8_t) (USBFS_SetupReqIndex & 0xFF))
 						{
-						case ( DEF_UEP_IN | DEF_UEP1):
+						case (DEF_UEP_OUT | DEF_UEP1):
 							if (((USBFSD->UEP1_CTRL_H) & USBFS_UEP_R_RES_MASK)
 									== USBFS_UEP_R_RES_STALL)
 							{
@@ -680,13 +941,31 @@ void USBFS_IRQHandler(void)
 							}
 							break;
 
-						case ( DEF_UEP_OUT | DEF_UEP2):
+						case (DEF_UEP_IN | DEF_UEP2):
 							if (((USBFSD->UEP2_CTRL_H) & USBFS_UEP_T_RES_MASK)
 									== USBFS_UEP_T_RES_STALL)
 							{
 								USBFS_EP0_4Buf[0] = 0x01;
 							}
 							break;
+
+#if DAP_WITH_CDC
+						case (DEF_UEP_IN | DEF_UEP3):
+							if (((USBFSD->UEP3_CTRL_H) & USBFS_UEP_T_RES_MASK)
+									== USBFS_UEP_T_RES_STALL)
+							{
+								USBFS_EP0_4Buf[0] = 0x01;
+							}
+							break;
+
+						case (DEF_UEP_OUT | DEF_UEP3):
+							if (((USBFSD->UEP3_CTRL_H) & USBFS_UEP_R_RES_MASK)
+									== USBFS_UEP_R_RES_STALL)
+							{
+								USBFS_EP0_4Buf[0] = 0x01;
+							}
+							break;
+#endif
 
 						default:
 							errflag = 0xFF;
@@ -768,7 +1047,7 @@ void USBFS_IRQHandler(void)
 	else if (intflag & USBFS_UIF_SUSPEND)
 	{
 		/* usb suspend interrupt processing */
-		if ( USBFSD->MIS_ST & USBFS_UMS_SUSPEND)
+		if (USBFSD->MIS_ST & USBFS_UMS_SUSPEND)
 		{
 			USBFS_DevSleepStatus |= 0x02;
 			if (USBFS_DevSleepStatus == 0x03)
@@ -787,5 +1066,4 @@ void USBFS_IRQHandler(void)
 		/* other interrupts */
 		USBFSD->INT_FG = intflag;
 	}
-
 }
