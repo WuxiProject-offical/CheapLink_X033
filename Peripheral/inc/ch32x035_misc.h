@@ -34,7 +34,7 @@ extern "C" {
  */
 
 #ifndef INTSYSCR_INEST
-#define INTSYSCR_INEST   INTSYSCR_INEST_EN
+#define INTSYSCR_INEST   INTSYSCR_INEST_NoEN
 #endif
 
 /* NVIC Init Structure definition

@@ -14,8 +14,6 @@
 
 #include "usbqueue.h"
 
-#define UDPRINT PRINT
-
 /*******************************************************************************/
 /* Variable Definition */
 /* Global */
@@ -627,7 +625,6 @@ void USBFS_IRQHandler(void)
 					{ // vendorCode
 						if (USBFS_SetupReqIndex == 0x0007)
 						{
-							UDPRINT("Requested MSOS2desc\n");
 							pUSBFS_Descr = (uint8_t *) MyWinusbDesc;
 #if DAP_WITH_CDC
 							len = 170;
@@ -724,7 +721,6 @@ void USBFS_IRQHandler(void)
 #if MSOS_DESC == 2
 					case USB_DESCR_TYP_BOS:
 						// BOS desc
-						UDPRINT("Requested BOS\n");
 						pUSBFS_Descr = MyBosDesc;
 						len = DEF_USBD_BOS_DESC_LEN;
 						break;
