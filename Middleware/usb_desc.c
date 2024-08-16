@@ -74,7 +74,7 @@ const uint8_t MyCfgDescr[] =
 		0x05,					   // 描述符类型（是端点描述符）
 		0x01,					   // 是EP1OUT
 		0x02,					   // 是批量传输
-		DEF_USBD_ENDP2_SIZE, 0x00, // 端点大小
+		DEF_USBD_ENDP1_SIZE, 0x00, // 端点大小
 		0x00,					   // 无意义
 
 		// 端点描述符
@@ -82,7 +82,7 @@ const uint8_t MyCfgDescr[] =
 		0x05,					   // 描述符类型（是端点描述符）
 		0x82,					   // 是EP2IN
 		0x02,					   // 是批量传输
-		DEF_USBD_ENDP1_SIZE, 0x00, // 端点大小
+		DEF_USBD_ENDP2_SIZE, 0x00, // 端点大小
 		0x00,					   // 无意义
 
 #if DAP_WITH_CDC
