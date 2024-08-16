@@ -16,7 +16,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <usbqueue.h>
+#include <usbqueue.h> // 这个版本的USBQueue已经修改过。This version of USBQueue library has been modified.
 
 // Portable implemention
 // - You need to implement things below to integrate into your program.

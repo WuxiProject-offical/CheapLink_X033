@@ -14,6 +14,8 @@
 #ifndef __CH32X035_USBFS_DEVICE_H_
 #define __CH32X035_USBFS_DEVICE_H_
 
+// 为确保宏定义生效，请在全局宏定义中设置MSOS_DESC和DAP_WITH_CDC的值。
+
 #include <ch32x035_usb.h>
 #include "debug.h"
 #include "string.h"

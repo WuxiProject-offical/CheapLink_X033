@@ -19,6 +19,8 @@
 #ifndef MIDWARE_USBQUEUE_H_
 #define MIDWARE_USBQUEUE_H_
 
+// 这个版本的USBQueue已经修改过。This version of USBQueue library has been modified.
+
 #include "ch32x035.h"
 #include <stdint.h>
 #include <stddef.h>
