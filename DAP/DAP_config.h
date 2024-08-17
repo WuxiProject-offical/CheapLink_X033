@@ -306,7 +306,6 @@ __STATIC_INLINE uint8_t DAP_GetProductFirmwareVersionString(char *str)
  */
 
 // Configure DAP I/O pins ------------------------------
-// TODO: Implement IO setup
 /** Setup JTAG I/O pins: TCK, TMS, TDI, TDO, nTRST, and nRESET.
  Configures the DAP Hardware I/O pins for JTAG mode:
  - TCK, TMS, TDI, nTRST, nRESET to output mode and set to high level.
@@ -322,28 +321,55 @@ __STATIC_INLINE void PORT_JTAG_SETUP(void)
  - SWCLK, SWDIO, nRESET to output mode and set to default high level.
  - TDI, nTRST to HighZ mode (pins are unused in SWD mode).
  */
+/*
+ * PA5 - SWCLK			OUT_PP
+ * PA6 - SWDIO(IN)		IN_PU
+ * PA7 - SWDIO(OUT)		OUT_PP
+ * PA4 - nRESET			OUT_PP
+ */
 __STATIC_INLINE void PORT_SWD_SETUP(void)
 {
-	;
+	GPIO_InitTypeDef GPIO_InitStructure =
+	{ 0 };
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 /** Disable JTAG/SWD I/O Pins.
  Disables the DAP Hardware I/O pins which configures:
  - TCK/SWCLK, TMS/SWDIO, TDI, TDO, nTRST, nRESET to High-Z mode.
  */
+/*
+ * PA5 - SWCLK			OUT_PP
+ * PA6 - SWDIO(IN)		IN_PU
+ * PA7 - SWDIO(OUT)		OUT_PP
+ * PA4 - nRESET			OUT_PP
+ */
 __STATIC_INLINE void PORT_OFF(void)
 {
-	;
+	GPIO_InitTypeDef GPIO_InitStructure =
+	{ 0 };
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6
+			| GPIO_Pin_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 // SWCLK/TCK I/O pin -------------------------------------
-// TODO: Implement SWCLK pin
 /** SWCLK/TCK I/O pin: Get Input.
  \return Current status of the SWCLK/TCK DAP hardware I/O pin.
  */
+/*
+ * PA5 - SWCLK
+ */
 __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN(void)
 {
-	return (0U);
+	return ((GPIOA->INDR & GPIO_Pin_5) != RESET);
 }
 
 /** SWCLK/TCK I/O pin: Set Output to High.
@@ -351,7 +377,7 @@ __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
 {
-	;
+	GPIOA->BSHR = GPIO_Pin_5;
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
@@ -359,17 +385,20 @@ __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
  */
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_CLR(void)
 {
-	;
+	GPIOA->BCR = GPIO_Pin_5;
 }
 
 // SWDIO/TMS Pin I/O --------------------------------------
-// TODO: Implement SWDIO pin
 /** SWDIO/TMS I/O pin: Get Input.
  \return Current status of the SWDIO/TMS DAP hardware I/O pin.
  */
+/*
+ * PA6 - SWDIO(IN)		IN_PU
+ * PA7 - SWDIO(OUT)		OUT_PP
+ */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN(void)
 {
-	return (0U);
+	return ((GPIOA->INDR & GPIO_Pin_6) != RESET);
 }
 
 /** SWDIO/TMS I/O pin: Set Output to High.
@@ -377,7 +406,7 @@ __STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_TMS_SET(void)
 {
-	;
+	GPIOA->BSHR = GPIO_Pin_7;
 }
 
 /** SWDIO/TMS I/O pin: Set Output to Low.
@@ -385,7 +414,7 @@ __STATIC_FORCEINLINE void PIN_SWDIO_TMS_SET(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_TMS_CLR(void)
 {
-	;
+	GPIOA->BCR = GPIO_Pin_7;
 }
 
 /** SWDIO I/O pin: Get Input (used in SWD mode only).
@@ -393,7 +422,7 @@ __STATIC_FORCEINLINE void PIN_SWDIO_TMS_CLR(void)
  */
 __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN(void)
 {
-	return (0U);
+	return ((GPIOA->INDR & GPIO_Pin_6) != RESET);
 }
 
 /** SWDIO I/O pin: Set Output (used in SWD mode only).
@@ -401,7 +430,10 @@ __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit)
 {
-	;
+	if (bit)
+		GPIOA->BSHR = GPIO_Pin_7;
+	else
+		GPIOA->BCR = GPIO_Pin_7;
 }
 
 /** SWDIO I/O pin: Switch to Output mode (used in SWD mode only).
@@ -471,13 +503,15 @@ __STATIC_FORCEINLINE void PIN_nTRST_OUT(uint32_t bit)
 }
 
 // nRESET Pin I/O------------------------------------------
-// TODO: Implement RST pin
 /** nRESET I/O pin: Get Input.
  \return Current status of the nRESET DAP hardware I/O pin.
  */
+/*
+ * PA4 - nRESET			OUT_PP
+ */
 __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN(void)
 {
-	return (0U);
+	return ((GPIOA->INDR & GPIO_Pin_4) != RESET);
 }
 
 /** nRESET I/O pin: Set Output.
@@ -487,7 +521,10 @@ __STATIC_FORCEINLINE uint32_t PIN_nRESET_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
 {
-	;
+	if (bit)
+		GPIOA->BSHR = GPIO_Pin_4;
+	else
+		GPIOA->BCR = GPIO_Pin_4;
 }
 
 ///@}
@@ -504,7 +541,6 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
  - Connect LED: is active when the DAP hardware is connected to a debugger.
  - Running LED: is active when the debugger has put the target device into running state.
  */
-// TODO: Implement LED operations
 /** Debug Unit: Set status of Connected LED.
  \param bit status of the Connect LED.
  - 1: Connect LED ON: debugger is connected to CMSIS-DAP Debug Unit.
@@ -512,6 +548,10 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
  */
 __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 {
+	if (bit)
+		GPIOA->BSHR = GPIO_Pin_0;
+	else
+		GPIOA->BCR = GPIO_Pin_0;
 }
 
 /** Debug Unit: Set status Target Running LED.
@@ -521,6 +561,10 @@ __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
  */
 __STATIC_INLINE void LED_RUNNING_OUT(uint32_t bit)
 {
+	if (bit)
+		GPIOA->BSHR = GPIO_Pin_1;
+	else
+		GPIOA->BCR = GPIO_Pin_1;
 }
 
 ///@}
@@ -544,7 +588,6 @@ extern volatile uint32_t SYSCNT;
  */
 __STATIC_INLINE uint32_t TIMESTAMP_GET(void)
 {
-	// TODO: Implement a Timestamp Counter
 	return SYSCNT | (TIM3->CNT);
 }
 
@@ -567,10 +610,39 @@ __STATIC_INLINE uint32_t TIMESTAMP_GET(void)
  - for nTRST, nRESET a weak pull-up (if available) is enabled.
  - LED output pins are enabled and LEDs are turned off.
  */
+/*
+ * PA5 - SWCLK			OUT_PP
+ * PA6 - SWDIO(IN)		IN_PU
+ * PA7 - SWDIO(OUT)		OUT_PP
+ * PA4 - nRESET			OUT_PP
+ */
+/*
+ * LED:
+ *   RED    - PC3
+ *   GREEN  - PA0
+ *   BLUE   - PA1
+ */
 __STATIC_INLINE void DAP_SETUP(void)
 {
-	// TODO: Implement a DAP setup
-	//return;
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC, ENABLE);
+	GPIO_InitTypeDef GPIO_InitStructure =
+	{ 0 };
+	// Init LED
+	GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+	GPIOC->BSHR = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOC, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	// Init SWD IO
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	// Init SYSCNT TIM3
 	{
 		TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure =
@@ -605,46 +677,4 @@ __STATIC_INLINE uint8_t RESET_TARGET(void)
 }
 
 ///@}
-
-//// Changed to declarations
-//__STATIC_INLINE uint8_t DAP_GetVendorString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetProductString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetSerNumString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetTargetDeviceVendorString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetTargetDeviceNameString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetTargetBoardVendorString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetTargetBoardNameString(char *str);
-//__STATIC_INLINE uint8_t DAP_GetProductFirmwareVersionString(char *str);
-//
-//__STATIC_INLINE void PORT_JTAG_SETUP(void);
-//__STATIC_INLINE void PORT_SWD_SETUP(void);
-//__STATIC_INLINE void PORT_OFF(void);
-//
-//__STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN(void);
-//__STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void);
-//__STATIC_FORCEINLINE void PIN_SWCLK_TCK_CLR(void);
-//__STATIC_FORCEINLINE uint32_t PIN_SWDIO_TMS_IN(void);
-//__STATIC_FORCEINLINE void PIN_SWDIO_TMS_SET(void);
-//__STATIC_FORCEINLINE void PIN_SWDIO_TMS_CLR(void);
-//__STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN(void);
-//__STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit);
-//__STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void);
-//__STATIC_FORCEINLINE void PIN_SWDIO_OUT_DISABLE(void);
-//__STATIC_FORCEINLINE uint32_t PIN_TDI_IN(void);
-//__STATIC_FORCEINLINE void PIN_TDI_OUT(uint32_t bit);
-//__STATIC_FORCEINLINE uint32_t PIN_TDO_IN(void);
-//__STATIC_FORCEINLINE uint32_t PIN_nTRST_IN(void);
-//__STATIC_FORCEINLINE void PIN_nTRST_OUT(uint32_t bit);
-//__STATIC_FORCEINLINE uint32_t PIN_nRESET_IN(void);
-//__STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit);
-//
-//__STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit);
-//__STATIC_INLINE void LED_RUNNING_OUT(uint32_t bit);
-//
-//__STATIC_INLINE uint32_t TIMESTAMP_GET(void);
-//
-//__STATIC_INLINE void DAP_SETUP(void);
-//
-//__STATIC_INLINE uint8_t RESET_TARGET(void);
-
 #endif /* __DAP_CONFIG_H__ */
