@@ -95,7 +95,7 @@
 /// This configuration settings is used to optimize the communication performance with the
 /// debugger and depends on the USB peripheral. For devices with limited RAM or USB buffer the
 /// setting can be reduced (valid range is 1 .. 255).
-#define DAP_PACKET_COUNT        4U              ///< Specifies number of packets buffered.
+#define DAP_PACKET_COUNT        16U              ///< Specifies number of packets buffered.
 
 /// Indicate that UART Serial Wire Output (SWO) trace is available.
 /// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
@@ -378,6 +378,7 @@ __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN(void)
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
 {
 	GPIOA->BSHR = GPIO_Pin_5;
+	__NOP();__NOP();__NOP();__NOP();
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
@@ -386,6 +387,7 @@ __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_CLR(void)
 {
 	GPIOA->BCR = GPIO_Pin_5;
+	__NOP();__NOP();__NOP();__NOP();
 }
 
 // SWDIO/TMS Pin I/O --------------------------------------
@@ -430,7 +432,7 @@ __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit)
 {
-	if (bit)
+	if (bit&0x00000001)
 		GPIOA->BSHR = GPIO_Pin_7;
 	else
 		GPIOA->BCR = GPIO_Pin_7;
@@ -442,7 +444,12 @@ __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void)
 {
-	;
+	GPIO_InitTypeDef GPIO_InitStructure =
+		{ 0 };
+		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
@@ -451,7 +458,11 @@ __STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT_DISABLE(void)
 {
-	;
+	GPIO_InitTypeDef GPIO_InitStructure =
+			{ 0 };
+			GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+			GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 // TDI Pin I/O ---------------------------------------------
