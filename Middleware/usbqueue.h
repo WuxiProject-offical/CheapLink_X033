@@ -32,7 +32,7 @@
 /*
  * UQ_QUEUELEN: Defines the queue length
  */
-#define UQ_QUEUELEN 		16
+#define UQ_QUEUELEN 		19
 
 /*
  * UQ_PACKLEN_MAX: Defines the max length of USB packet received

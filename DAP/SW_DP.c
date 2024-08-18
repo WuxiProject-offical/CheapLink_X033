@@ -60,7 +60,7 @@
 //   data:   pointer to sequence bit data
 //   return: none
 #if ((DAP_SWD != 0) || (DAP_JTAG != 0))
-//__attribute__((section(".highcode")))
+__attribute__((section(".highcode")))
 void SWJ_Sequence(uint32_t count, const uint8_t *data)
 {
 	uint32_t val;
@@ -96,7 +96,7 @@ void SWJ_Sequence(uint32_t count, const uint8_t *data)
 //   swdi:   pointer to SWDIO captured data
 //   return: none
 #if (DAP_SWD != 0)
-//__attribute__((section(".highcode")))
+__attribute__((section(".highcode")))
 void SWD_Sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi)
 {
 	uint32_t val;
@@ -146,7 +146,6 @@ void SWD_Sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi)
 //   data:    DATA[31:0]
 //   return:  ACK[2:0]
 #define SWD_TransferFunction(speed)     /**/                                    \
-/*__attribute__((section(".highcode")))*/        		                            \
 static uint8_t SWD_Transfer##speed (uint32_t request, uint32_t *data) {         \
   uint32_t ack;                                                                 \
   uint32_t bit;                                                                 \
@@ -275,17 +274,18 @@ static uint8_t SWD_Transfer##speed (uint32_t request, uint32_t *data) {         
 
 #undef  PIN_DELAY
 #define PIN_DELAY() PIN_DELAY_FAST()
+//__attribute__((section(".highcode")))
 SWD_TransferFunction(Fast)
 
 #undef  PIN_DELAY
 #define PIN_DELAY() PIN_DELAY_SLOW(DAP_Data.clock_delay)
+//__attribute__((section(".highcode")))
 SWD_TransferFunction(Slow)
 
 // SWD Transfer I/O
 //   request: A[3:2] RnW APnDP
 //   data:    DATA[31:0]
 //   return:  ACK[2:0]
-//__attribute__((section(".highcode")))
 uint8_t SWD_Transfer(uint32_t request, uint32_t *data)
 {
 	if (DAP_Data.fast_clock)

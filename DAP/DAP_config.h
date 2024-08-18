@@ -95,7 +95,7 @@
 /// This configuration settings is used to optimize the communication performance with the
 /// debugger and depends on the USB peripheral. For devices with limited RAM or USB buffer the
 /// setting can be reduced (valid range is 1 .. 255).
-#define DAP_PACKET_COUNT        16U              ///< Specifies number of packets buffered.
+#define DAP_PACKET_COUNT        19U              ///< Specifies number of packets buffered.
 
 /// Indicate that UART Serial Wire Output (SWO) trace is available.
 /// This information is returned by the command \ref DAP_Info as part of <b>Capabilities</b>.
@@ -378,7 +378,6 @@ __STATIC_FORCEINLINE uint32_t PIN_SWCLK_TCK_IN(void)
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
 {
 	GPIOA->BSHR = GPIO_Pin_5;
-	__NOP();__NOP();__NOP();__NOP();
 }
 
 /** SWCLK/TCK I/O pin: Set Output to Low.
@@ -387,7 +386,6 @@ __STATIC_FORCEINLINE void PIN_SWCLK_TCK_SET(void)
 __STATIC_FORCEINLINE void PIN_SWCLK_TCK_CLR(void)
 {
 	GPIOA->BCR = GPIO_Pin_5;
-	__NOP();__NOP();__NOP();__NOP();
 }
 
 // SWDIO/TMS Pin I/O --------------------------------------
@@ -432,7 +430,7 @@ __STATIC_FORCEINLINE uint32_t PIN_SWDIO_IN(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit)
 {
-	if (bit&0x00000001)
+	if (bit & 0x00000001)
 		GPIOA->BSHR = GPIO_Pin_7;
 	else
 		GPIOA->BCR = GPIO_Pin_7;
@@ -444,12 +442,12 @@ __STATIC_FORCEINLINE void PIN_SWDIO_OUT(uint32_t bit)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure =
-		{ 0 };
-		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		GPIO_Init(GPIOA, &GPIO_InitStructure);
+//	GPIO_InitTypeDef GPIO_InitStructure =
+//		{ 0 };
+//		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+//		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+//		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+//		GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 /** SWDIO I/O pin: Switch to Input mode (used in SWD mode only).
@@ -458,11 +456,11 @@ __STATIC_FORCEINLINE void PIN_SWDIO_OUT_ENABLE(void)
  */
 __STATIC_FORCEINLINE void PIN_SWDIO_OUT_DISABLE(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure =
-			{ 0 };
-			GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
-			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-			GPIO_Init(GPIOA, &GPIO_InitStructure);
+//	GPIO_InitTypeDef GPIO_InitStructure =
+//			{ 0 };
+//			GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+//			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+//			GPIO_Init(GPIOA, &GPIO_InitStructure);
 }
 
 // TDI Pin I/O ---------------------------------------------
@@ -513,6 +511,9 @@ __STATIC_FORCEINLINE void PIN_nTRST_OUT(uint32_t bit)
 	;
 }
 
+extern const uint8_t _AIRCR_RESET_Sequence[];
+extern uint32_t DAP_Transfer(const uint8_t *request, uint8_t *response);
+
 // nRESET Pin I/O------------------------------------------
 /** nRESET I/O pin: Get Input.
  \return Current status of the nRESET DAP hardware I/O pin.
@@ -535,7 +536,17 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
 	if (bit)
 		GPIOA->BSHR = GPIO_Pin_4;
 	else
+	{
+#if USE_MDK_RESET_WORKAROUND
+		uint8_t dummybuf[8];
+		DAP_Transfer(_AIRCR_RESET_Sequence, dummybuf);
+		__NOP();
+		__NOP();
+		__NOP();
+		__NOP();
+#endif
 		GPIOA->BCR = GPIO_Pin_4;
+	}
 }
 
 ///@}
@@ -560,9 +571,9 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
 __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 {
 	if (bit)
-		GPIOA->BSHR = GPIO_Pin_0;
-	else
 		GPIOA->BCR = GPIO_Pin_0;
+	else
+		GPIOA->BSHR = GPIO_Pin_0;
 }
 
 /** Debug Unit: Set status Target Running LED.
@@ -573,9 +584,9 @@ __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 __STATIC_INLINE void LED_RUNNING_OUT(uint32_t bit)
 {
 	if (bit)
-		GPIOA->BSHR = GPIO_Pin_1;
-	else
 		GPIOA->BCR = GPIO_Pin_1;
+	else
+		GPIOA->BSHR = GPIO_Pin_1;
 }
 
 ///@}
@@ -683,8 +694,9 @@ __STATIC_INLINE void DAP_SETUP(void)
  */
 __STATIC_INLINE uint8_t RESET_TARGET(void)
 {
-	// TODO: Implement a Cortex-M reset seq
-	return (0U);    // change to '1' when a device reset sequence is implemented
+	uint8_t dummybuf[8];
+	DAP_Transfer(_AIRCR_RESET_Sequence, dummybuf);
+	return (1U);    // change to '1' when a device reset sequence is implemented
 }
 
 ///@}

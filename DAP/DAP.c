@@ -1264,7 +1264,7 @@ static uint32_t DAP_Dummy_Transfer(const uint8_t *request, uint8_t *response) {
 //   response: pointer to response data
 //   return:   number of bytes in response (lower 16 bits)
 //             number of bytes in request (upper 16 bits)
-static uint32_t DAP_Transfer(const uint8_t *request, uint8_t *response) {
+uint32_t DAP_Transfer(const uint8_t *request, uint8_t *response) {
   uint32_t num;
 
   switch (DAP_Data.debug_port) {
