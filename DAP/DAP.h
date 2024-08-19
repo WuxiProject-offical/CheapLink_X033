@@ -253,15 +253,15 @@ typedef struct
 #if (DAP_SWD != 0)
 struct
 {                                      // SWD Configuration
-	uint8_t turnaround;// Turnaround period
-	uint8_t data_phase;// Always generate Data Phase
+	uint8_t turnaround;				   // Turnaround period
+	uint8_t data_phase;				   // Always generate Data Phase
 }swd_conf;
 #endif
 #if (DAP_JTAG != 0)
 struct
 {                                      // JTAG Device Chain
-	uint8_t count;// Number of devices
-	uint8_t index;// Device index (device at TDO has index 0)
+	uint8_t count;					   // Number of devices
+	uint8_t index;					   // Device index (device at TDO has index 0)
 #if (DAP_JTAG_DEV_CNT != 0)
 	uint8_t ir_length[DAP_JTAG_DEV_CNT];      // IR Length in bits
 	uint16_t ir_before[DAP_JTAG_DEV_CNT];// Bits before IR
@@ -271,7 +271,7 @@ struct
 #endif
 } DAP_Data_t;
 
-extern DAP_Data_t DAP_Data;            // DAP Data
+extern volatile DAP_Data_t DAP_Data;            // DAP Data
 extern volatile uint8_t DAP_TransferAbort;   // Transfer Abort Flag
 
 #ifdef  __cplusplus
@@ -335,11 +335,11 @@ extern void DAP_Setup(void);
 #define DELAY_SLOW_CYCLES       3U      // Number of cycles for one iteration
 #endif
 //#if defined(__CC_ARM)
-__STATIC_FORCEINLINE void PIN_DELAY_SLOW (uint32_t delay)
+__STATIC_FORCEINLINE void PIN_DELAY_SLOW(uint32_t delay)
 {
 uint32_t count = delay;
 while (--count);
-(void)count;
+(void) count;
 }
 //#else
 //__STATIC_FORCEINLINE void PIN_DELAY_SLOW(uint32_t delay)
