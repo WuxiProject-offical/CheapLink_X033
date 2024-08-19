@@ -571,9 +571,18 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
 __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 {
 	if (bit)
-		GPIOA->BCR = GPIO_Pin_0;
-	else
+	{
+		// Blue
+		GPIOA->BCR = GPIO_Pin_1;
 		GPIOA->BSHR = GPIO_Pin_0;
+		GPIOC->BSHR = GPIO_Pin_3;
+	}
+	else
+	{
+		// Off
+		GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+		GPIOC->BSHR = GPIO_Pin_3;
+	}
 }
 
 /** Debug Unit: Set status Target Running LED.
@@ -584,9 +593,18 @@ __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 __STATIC_INLINE void LED_RUNNING_OUT(uint32_t bit)
 {
 	if (bit)
-		GPIOA->BCR = GPIO_Pin_1;
-	else
+	{
+		// Green
+		GPIOA->BCR = GPIO_Pin_0;
 		GPIOA->BSHR = GPIO_Pin_1;
+		GPIOC->BSHR = GPIO_Pin_3;
+	}
+	else
+	{
+		// Off
+		GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+		GPIOC->BSHR = GPIO_Pin_3;
+	}
 }
 
 ///@}

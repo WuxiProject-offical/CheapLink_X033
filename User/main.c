@@ -29,7 +29,7 @@
 
 void task_Blink(void *pvParameters)
 {
-	//vTaskSuspend(NULL);
+	vTaskSuspend(NULL);
 	u8 i = 0;
 	GPIO_InitTypeDef GPIO_InitStructure =
 	{ 0 };
