@@ -27,35 +27,234 @@
 #include "DAP_config.h"
 #include "DAP.h"
 
-void task_Blink(void *pvParameters)
+__attribute__((aligned(4)))
+TaskHandle_t taskHandleLED = NULL;
+void task_LED(void *pvParameters)
 {
-	vTaskSuspend(NULL);
-	u8 i = 0;
-	GPIO_InitTypeDef GPIO_InitStructure =
-	{ 0 };
-
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
-	while(1)
+	// vTaskSuspend(NULL);
+	volatile uint8_t i = 0, LED_State = 0;
+	volatile uint32_t notify = 0xffffffff, flashDelayTicks = 0;
+	while (1)
 	{
-		vTaskDelay(pdMS_TO_TICKS(500));
-		GPIO_WriteBit(GPIOC, GPIO_Pin_3, (i == 0) ? (i = Bit_SET) : (i = Bit_RESET));
+		switch (LED_State)
+		{
+			case 0x11:
+			// Red Still
+			GPIOC->BCR = GPIO_Pin_3;
+			GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+			break;
+
+			case 0x12:
+			// Red Flash(1Hz)
+			case 0x13:
+			// Red Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOC->BSHR = GPIO_Pin_3;
+			}
+			else
+			{
+				i = 1;
+				GPIOC->BCR = GPIO_Pin_3;
+			}
+			GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+			break;
+
+			case 0x21:
+			// Green Still
+			GPIOA->BCR = GPIO_Pin_1;
+			GPIOA->BSHR = GPIO_Pin_0;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x22:
+			// Green Flash(1Hz)
+			case 0x23:
+			// Green Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_1;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_1;
+			}
+			GPIOA->BSHR = GPIO_Pin_0;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x31:
+			// Yellow Still
+			GPIOA->BCR = GPIO_Pin_1;
+			GPIOC->BCR = GPIO_Pin_3;
+			GPIOA->BSHR = GPIO_Pin_0;
+			break;
+
+			case 0x32:
+			// Yellow Flash(1Hz)
+			case 0x33:
+			// Yellow Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_1;
+				GPIOC->BSHR = GPIO_Pin_3;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_1;
+				GPIOC->BCR = GPIO_Pin_3;
+			}
+			GPIOA->BSHR = GPIO_Pin_0;
+			break;
+
+			case 0x41:
+			// Blue Still
+			GPIOA->BCR = GPIO_Pin_0;
+			GPIOA->BSHR = GPIO_Pin_1;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x42:
+			// Blue Flash(1Hz)
+			case 0x43:
+			// Blue Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_0;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_0;
+			}
+			GPIOA->BSHR = GPIO_Pin_1;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x51:
+			// Magenta Still
+			GPIOA->BCR = GPIO_Pin_0;
+			GPIOC->BCR = GPIO_Pin_3;
+			GPIOA->BSHR = GPIO_Pin_1;
+			break;
+
+			case 0x52:
+			// Magenta Flash(1Hz)
+			case 0x53:
+			// Magenta Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_0;
+				GPIOC->BSHR = GPIO_Pin_3;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_0;
+				GPIOC->BCR = GPIO_Pin_3;
+			}
+			GPIOA->BSHR = GPIO_Pin_1;
+			break;
+
+			case 0x61:
+			// Cyan Still
+			GPIOA->BCR = GPIO_Pin_0 | GPIO_Pin_1;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x62:
+			// Cyan Flash(1Hz)
+			case 0x63:
+			// Cyan Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_0 | GPIO_Pin_1;
+			}
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+
+			case 0x71:
+			// White Still
+			GPIOA->BCR = GPIO_Pin_0 | GPIO_Pin_1;
+			GPIOC->BCR = GPIO_Pin_3;
+			break;
+
+			case 0x72:
+			// White Flash(1Hz)
+			case 0x73:
+			// White Flash(5Hz)
+			if (i)
+			{
+				i = 0;
+				GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+				GPIOC->BSHR = GPIO_Pin_3;
+			}
+			else
+			{
+				i = 1;
+				GPIOA->BCR = GPIO_Pin_0 | GPIO_Pin_1;
+				GPIOC->BCR = GPIO_Pin_3;
+			}
+			break;
+
+			default:
+			// Off
+			GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
+			GPIOC->BSHR = GPIO_Pin_3;
+			break;
+		}
+		if (xTaskNotifyWait(0x0, 0xffffffffUL, &notify, flashDelayTicks) == pdTRUE)
+		{
+			i = 0;
+			LED_State = notify & 0x000000ff;
+			if ((LED_State & 0x0f) == 0x02)
+			flashDelayTicks = pdMS_TO_TICKS(500);
+			else if ((LED_State & 0x0f) == 0x03)
+			flashDelayTicks = pdMS_TO_TICKS(200);
+			else
+			flashDelayTicks = 0;
+			//printf("led %02x\r\n",LED_State);
+		}
 	}
-	vTaskDelete( NULL);
+	vTaskDelete(NULL);
 }
 
+__attribute__((aligned(4)))
 TaskHandle_t taskHandleDAP = NULL;
 void task_DAP(void *pvParameters)
 {
-	while(1)
+	xTaskNotify(taskHandleLED, 0x32, eSetValueWithOverwrite); // LED: Yellow 1Hz
+	volatile int32_t waitFlag;
+	while (1)
 	{
-		xTaskNotifyWait(0x0, 0xffffffffUL, NULL, portMAX_DELAY);
-		USBQueue_DoProcess();
+		waitFlag = xTaskNotifyWait(0x0, 0xffffffffUL, NULL, pdMS_TO_TICKS(5000));
+		if(waitFlag == pdFALSE)
+		{
+			if (USBFS_DevEnumStatus && !(USBFSD->MIS_ST & USBFS_UMS_SUSPEND))
+			{
+				xTaskNotify(taskHandleLED, 0x31, eSetValueWithOverwrite); // LED: Yellow Still
+			}
+		}
+		else
+		{
+			//xTaskNotify(taskHandleLED, 0x71, eSetValueWithOverwrite); // LED: White Still
+			USBQueue_DoProcess();
+		}
 	}
-	vTaskDelete( NULL);
+	vTaskDelete(NULL);
 }
 
 extern void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
@@ -66,7 +265,7 @@ int main(void)
 	SystemCoreClockUpdate();
 	Delay_Init();
 	USART_Printf_Init(921600);
-	//SDI_Printf_Enable();
+	// SDI_Printf_Enable();
 	printf("SystemClk:%d\r\n", SystemCoreClock);
 	printf("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
 
@@ -82,14 +281,16 @@ int main(void)
 	NVIC_EnableIRQ(USBFS_IRQn);
 	DAP_Setup();
 
-	xTaskCreate((TaskFunction_t) task_Blink, (const char*) "Blink",
-			(uint16_t) 64, (void*) NULL, (UBaseType_t) 1, (TaskHandle_t*) NULL);
+	xTaskCreate((TaskFunction_t) task_LED, (const char *) "LED", (uint16_t) 128,
+			(void *) NULL, (UBaseType_t) 1, (TaskHandle_t *) &taskHandleLED);
 
-	xTaskCreate((TaskFunction_t) task_DAP, (const char*) "DAP", (uint16_t) 256,
-			(void*) NULL, (UBaseType_t) 7, (TaskHandle_t*) &taskHandleDAP);
+	xTaskCreate((TaskFunction_t) task_DAP, (const char *) "DAP", (uint16_t) 256,
+			(void *) NULL, (UBaseType_t) 3, (TaskHandle_t *) &taskHandleDAP);
 
 	vTaskStartScheduler();
 
-	while(1)
-	{;}
+	while (1)
+	{
+		;
+	}
 }

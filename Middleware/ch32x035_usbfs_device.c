@@ -218,6 +218,10 @@ uint8_t USBFS_Endp_DataUp(uint8_t endp, uint8_t *pbuf, uint16_t len,
 	return 0;
 }
 
+#include "FreeRTOS.h"
+#include "task.h"
+extern TaskHandle_t taskHandleLED;
+
 /*********************************************************************
  * @fn      USBFS_IRQHandler
  *
@@ -626,6 +630,7 @@ void USBFS_IRQHandler(void)
 				case USB_SET_CONFIGURATION:
 					USBFS_DevConfig = (uint8_t) (USBFS_SetupReqValue & 0xFF);
 					USBFS_DevEnumStatus = 0x01;
+					xTaskNotifyFromISR(taskHandleLED, 0x31, eSetValueWithOverwrite, NULL);// LED: Yellow Still
 					break;
 
 					/* Clear or disable one usb feature */
@@ -905,6 +910,7 @@ void USBFS_IRQHandler(void)
 		USBFS_Device_Endp_Init();
 		USBFSD->INT_FG = USBFS_UIF_BUS_RST;
 		USBQueue_StatusReset();
+		xTaskNotifyFromISR(taskHandleLED, 0x32, eSetValueWithOverwrite, NULL);// LED: Yellow 1Hz
 	}
 	else if (intflag & USBFS_UIF_SUSPEND)
 	{
@@ -912,6 +918,7 @@ void USBFS_IRQHandler(void)
 		if (USBFSD->MIS_ST & USBFS_UMS_SUSPEND)
 		{
 			USBFS_DevSleepStatus |= 0x02;
+			xTaskNotifyFromISR(taskHandleLED, 0x32, eSetValueWithOverwrite, NULL);// LED: Yellow 1Hz
 			if (USBFS_DevSleepStatus == 0x03)
 			{
 				/* Handling usb sleep here */

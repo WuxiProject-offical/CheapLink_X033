@@ -44,6 +44,8 @@
  */
 
 #include "ch32x035.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 // MRS workaround
 #define __INLINE __inline
@@ -568,20 +570,16 @@ __STATIC_FORCEINLINE void PIN_nRESET_OUT(uint32_t bit)
  - 1: Connect LED ON: debugger is connected to CMSIS-DAP Debug Unit.
  - 0: Connect LED OFF: debugger is not connected to CMSIS-DAP Debug Unit.
  */
+extern TaskHandle_t taskHandleLED;
 __STATIC_INLINE void LED_CONNECTED_OUT(uint32_t bit)
 {
 	if (bit)
 	{
-		// Blue
-		GPIOA->BCR = GPIO_Pin_1;
-		GPIOA->BSHR = GPIO_Pin_0;
-		GPIOC->BSHR = GPIO_Pin_3;
+		xTaskNotify(taskHandleLED, 0x21, eSetValueWithOverwrite); // LED: Green Still
 	}
 	else
 	{
-		// Off
-		GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
-		GPIOC->BSHR = GPIO_Pin_3;
+		xTaskNotify(taskHandleLED, 0x00, eSetValueWithOverwrite); // LED: Off
 	}
 }
 
@@ -594,16 +592,11 @@ __STATIC_INLINE void LED_RUNNING_OUT(uint32_t bit)
 {
 	if (bit)
 	{
-		// Green
-		GPIOA->BCR = GPIO_Pin_0;
-		GPIOA->BSHR = GPIO_Pin_1;
-		GPIOC->BSHR = GPIO_Pin_3;
+		xTaskNotify(taskHandleLED, 0x41, eSetValueWithOverwrite); // LED: Blue Still
 	}
 	else
 	{
-		// Off
-		GPIOA->BSHR = GPIO_Pin_0 | GPIO_Pin_1;
-		GPIOC->BSHR = GPIO_Pin_3;
+		xTaskNotify(taskHandleLED, 0x00, eSetValueWithOverwrite); // LED: Off
 	}
 }
 
