@@ -158,7 +158,7 @@ __attribute__((section(".highcode")))
 
 	/* Packet Request */
 	parity = 0U;
-	PIN_SWDIO_OUT(1U);
+	PIN_SWDIO_TMS_SET();
 	PIN_SWCLK_CLR();
 	PIN_DELAY_FAST();
 	PIN_SWCLK_SET();
@@ -196,12 +196,12 @@ __attribute__((section(".highcode")))
 	PIN_DELAY_FAST();
 	PIN_SWCLK_SET();
 	PIN_DELAY_FAST(); /* Parity Bit */
-	PIN_SWDIO_OUT(0U);
+	PIN_SWDIO_TMS_CLR();
 	PIN_SWCLK_CLR();
 	PIN_DELAY_FAST();
 	PIN_SWCLK_SET();
 	PIN_DELAY_FAST(); /* Stop Bit */
-	PIN_SWDIO_OUT(1U);
+	PIN_SWDIO_TMS_SET();
 	PIN_SWCLK_CLR();
 	PIN_DELAY_FAST();
 	PIN_SWCLK_SET();
@@ -318,7 +318,7 @@ __attribute__((section(".highcode")))
 		n = DAP_Data.transfer.idle_cycles;
 		if (n)
 		{
-			PIN_SWDIO_OUT(0U);
+			PIN_SWDIO_TMS_CLR();
 			for (; n; n--)
 			{
 				PIN_SWCLK_CLR();
@@ -327,7 +327,7 @@ __attribute__((section(".highcode")))
 				PIN_DELAY_FAST();
 			}
 		}
-		PIN_SWDIO_OUT(1U);
+		PIN_SWDIO_TMS_SET();
 		return ((uint8_t) ack);
 	}
 
@@ -366,7 +366,7 @@ __attribute__((section(".highcode")))
 				PIN_DELAY_FAST(); /* Dummy Write WDATA[0:31] + Parity */
 			}
 		}
-		PIN_SWDIO_OUT(1U);
+		PIN_SWDIO_TMS_SET();
 		return ((uint8_t) ack);
 	}
 
@@ -379,7 +379,7 @@ __attribute__((section(".highcode")))
 		PIN_DELAY_FAST(); /* Back off data phase */
 	}
 	PIN_SWDIO_OUT_ENABLE();
-	PIN_SWDIO_OUT(1U);
+	PIN_SWDIO_TMS_SET();
 	return ((uint8_t) ack);
 }
 
