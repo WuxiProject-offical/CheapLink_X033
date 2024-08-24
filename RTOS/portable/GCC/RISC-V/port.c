@@ -232,7 +232,7 @@ void vPortEndScheduler( void )
 	for( ;; );
 }
 /*-----------------------------------------------------------*/
-void SysTick_Handler(void) __attribute__((interrupt()));
+void SysTick_Handler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 void SysTick_Handler( void )
 {
     GET_INT_SP();
