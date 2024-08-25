@@ -155,7 +155,7 @@ const uint8_t MyCfgDescr[] =
 		// 端点描述符
 		0x07,// 描述符大小
 		0x05,					   // 描述符类型（是端点描述符）
-		0x03,					   // 是EP3OUT
+		0x05,					   // 是EP5OUT
 		0x02,					   // 是批量传输
 		DEF_USBD_ENDP3_SIZE, 0x00, // 端点大小
 		0x00,					   // 无意义
