@@ -35,7 +35,6 @@ extern TaskHandle_t taskHandleSER;
 extern void task_SER(void *pvParameters);
 
 extern void USBFS_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
-extern void SysTick_Handler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 
 int main(void)
 {
@@ -68,7 +67,6 @@ int main(void)
 			(void *) NULL, (UBaseType_t) 3, (TaskHandle_t *) &taskHandleSER);
 #endif
 
-	SetVTFIRQ((u32) SysTick_Handler, SysTicK_IRQn, 1, ENABLE);
 	vTaskStartScheduler();
 
 	while (1)

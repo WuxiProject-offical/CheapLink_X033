@@ -22,19 +22,21 @@
 #include <ch32x035.h>
 #include "ch32x035_usbfs_device.h"
 
-volatile uint8_t CDC_linecoding[8];
+__attribute__((aligned(4)))
+TaskHandle_t taskHandleSER = NULL;
 
-#define CDCSER_QUEUEUP_LEN 4
+#define CDCSER_QUEUEUP_LEN 2
 #define CDCSER_QUEUEDOWN_LEN 4
 
-__attribute__((aligned(4)))     volatile uint8_t serialBufUp[CDCSER_QUEUEUP_LEN][64];
-__attribute__((aligned(4)))    volatile uint8_t serialBufDown[CDCSER_QUEUEDOWN_LEN][64];
+__attribute__((aligned(4))) volatile uint8_t serialBufUp[CDCSER_QUEUEUP_LEN][64];
+__attribute__((aligned(4))) volatile uint8_t serialBufDown[CDCSER_QUEUEDOWN_LEN][64];
 static volatile uint8_t CDCSerial_UpLen[4], CDCSerial_DownLen[4];
 static volatile uint8_t CDCSerial_UpPtrIn = 0, CDCSerial_UpPtrOut = 0,
-		CDCSerial_UpCntIn = 0, CDCSerial_UpCntOut = 0;
+						CDCSerial_UpCntIn = 0, CDCSerial_UpCntOut = 0;
 static volatile uint8_t CDCSerial_DownPtrIn = 0, CDCSerial_DownPtrOut = 0,
-		CDCSerial_DownCntIn = 0, CDCSerial_DownCntOut = 0;
-static volatile uint8_t CDCSerial_UpIdle = 1, CDCSerial_DownIdle = 1;
+						CDCSerial_DownCntIn = 0, CDCSerial_DownCntOut = 0;
+static volatile uint8_t CDCSerial_UpIdleIn = 1, CDCSerial_UpIdleOut = 1, CDCSerial_DownIdleIn = 1, CDCSerial_DownIdleOut = 1;
+static volatile uint32_t CDCSerial_LastUpLen = 0;
 
 extern volatile uint8_t USBFS_Endp_Busy[];
 
@@ -45,13 +47,14 @@ uint8_t CDCSerial_EPUpload(uint8_t *buf, uint16_t len)
 	{
 		;
 	}
+	CDCSerial_LastUpLen = len;
 	return USBFS_Endp_DataUp(DEF_UEP3, buf, len, DEF_UEP_DMA_LOAD);
 }
 
 // Prepare buffer for OUT transaction.
 void CDCSerial_SetEPDNAddr(uint8_t *buffer)
 {
-	USBFSD->UEP5_DMA = (uint32_t) buffer;
+	USBFSD->UEP5_DMA = (uint32_t)buffer;
 }
 
 // Control the OUT(downstream) endpoint ACK status.
@@ -92,24 +95,24 @@ void CDCSerial_EpOUT_Handler(uint8_t len)
 	//					Uart.USB_Down_StopFlag = 0x01;
 	//				}
 
-//	UQ_InLen[UQ_InPtrIn] = len;
-//	UQ_InPtrIn++;
-//	if (UQ_InPtrIn >= UQ_QUEUELEN) // loopback
-//	{
-//		UQ_InPtrIn = 0;
-//	}
-//	UQ_InCntIn++;
-//	xTaskNotifyFromISR(taskHandleDAP, 0x01, eSetBits, NULL);
-//	if ((uint8_t) (UQ_InCntIn - UQ_InCntOut) != UQ_QUEUELEN)
-//	{
-//		USBQueue_SetEPDNAddr(UQ_InQueue[UQ_InPtrIn]);
-//		USBQueue_SetEPDNAck(ENABLE);
-//	}
-//	else
-//	{
-//		USBQueue_SetEPDNAck(DISABLE);
-//		UQ_InIdle = 1;
-//	}
+	//	UQ_InLen[UQ_InPtrIn] = len;
+	//	UQ_InPtrIn++;
+	//	if (UQ_InPtrIn >= UQ_QUEUELEN) // loopback
+	//	{
+	//		UQ_InPtrIn = 0;
+	//	}
+	//	UQ_InCntIn++;
+	//	xTaskNotifyFromISR(taskHandleDAP, 0x01, eSetBits, NULL);
+	//	if ((uint8_t) (UQ_InCntIn - UQ_InCntOut) != UQ_QUEUELEN)
+	//	{
+	//		USBQueue_SetEPDNAddr(UQ_InQueue[UQ_InPtrIn]);
+	//		USBQueue_SetEPDNAck(ENABLE);
+	//	}
+	//	else
+	//	{
+	//		USBQueue_SetEPDNAck(DISABLE);
+	//		UQ_InIdle = 1;
+	//	}
 }
 
 void CDCSerial_EpIN_Handler()
@@ -117,8 +120,7 @@ void CDCSerial_EpIN_Handler()
 	if (CDCSerial_UpCntIn != CDCSerial_UpCntOut)
 	{
 		// left packets in queue
-		CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut],
-				CDCSerial_UpLen[CDCSerial_UpPtrOut]);
+		CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
 		CDCSerial_UpPtrOut++;
 		if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
 		{
@@ -128,7 +130,22 @@ void CDCSerial_EpIN_Handler()
 	}
 	else
 	{
-		CDCSerial_UpIdle = 1;
+		// last packet done
+		if (CDCSerial_LastUpLen == 64)
+		{
+			// need another zero-len packet
+			CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut - 1], 0);
+		}
+		CDCSerial_UpIdleOut = 1;
+	}
+	if (CDCSerial_UpIdleIn) // if UART paused
+	{
+		if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN) // if Queue not full
+		{
+			// start UART recv
+			CDCSerial_UpIdleIn = 0U;
+			DMA_Cmd(DMA1_Channel6, ENABLE);
+		}
 	}
 }
 
@@ -144,30 +161,203 @@ void CDCSerial_QueueReset()
 	CDCSerial_UpCntIn = CDCSerial_UpCntOut = 0;
 	CDCSerial_DownPtrIn = CDCSerial_DownPtrOut = 0;
 	CDCSerial_DownCntIn = CDCSerial_DownCntOut = 0;
-	CDCSerial_UpIdle = CDCSerial_DownIdle = 1;
+	CDCSerial_UpIdleIn = CDCSerial_UpIdleOut = 1;
+	CDCSerial_DownIdleIn = CDCSerial_DownIdleOut = 1;
 	CDCSerial_SetEPDNAddr(serialBufUp[CDCSerial_UpPtrIn]);
 	CDCSerial_SetEPDNAck(ENABLE);
 	// If other reset operation required, process below.
 }
 
-/*
- * baudrate = USBFS_EP0_4Buf[0];
- baudrate += ((uint32_t) USBFS_EP0_4Buf[1] << 8);
- baudrate += ((uint32_t) USBFS_EP0_4Buf[2] << 16);
- baudrate += ((uint32_t) USBFS_EP0_4Buf[3] << 24);
- Uart.Com_Cfg[7] = Uart.Rx_TimeOutMax;
- */
+void USART2_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
+void USART2_IRQHandler(void)
+{
+	if (USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
+	{
+		// Idle
+		if (CDCSerial_UpIdleIn)
+		{
+			;
+		}
+		else
+		{
+			uint16_t rxCnt = (64U - DMA1_Channel6->CNTR);
+			CDCSerial_UpLen[CDCSerial_UpPtrIn] = rxCnt;
+			CDCSerial_UpPtrIn++;
+			if (CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
+			{
+				CDCSerial_UpPtrIn = 0;
+			}
+			CDCSerial_UpCntIn++;
+			DMA_Cmd(DMA1_Channel6, DISABLE);
+			xTaskNotifyFromISR(taskHandleSER, 0x01, eSetBits, NULL);
+			if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
+			{
+				// Queue not full
+				DMA_SetCurrDataCounter(DMA1_Channel6, 64U);
+				DMA1_Channel6->MADDR = (uint32_t)(serialBufUp[CDCSerial_UpPtrIn]);
+				DMA_Cmd(DMA1_Channel6, ENABLE);
+			}
+			else
+			{
+				CDCSerial_UpIdleIn = 1;
+			}
+		}
+		// Clear flag
+		(void)USART_ReceiveData(USART2);
+	}
+	if (USART_GetITStatus(USART2, USART_IT_PE) != RESET)
+	{
+		// Parity Err
 
-__attribute__((aligned(4)))
-     TaskHandle_t taskHandleSER = NULL;
+		// Clear flag
+		(void)USART_ReceiveData(USART2);
+	}
+	if (USART_GetITStatus(USART2, USART_IT_ORE_ER))
+	{
+		// Overrun
+
+		// Clear flag
+		(void)USART_ReceiveData(USART2);
+	}
+	if (USART_GetITStatus(USART2, USART_IT_NE))
+	{
+		// Noise
+
+		// Clear flag
+		(void)USART_ReceiveData(USART2);
+	}
+	if (USART_GetITStatus(USART2, USART_IT_FE))
+	{
+		// Frame err
+
+		// Clear flag
+		(void)USART_ReceiveData(USART2);
+	}
+}
+
+// DMA RX2
+void DMA1_Channel6_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
+void DMA1_Channel6_IRQHandler(void)
+{
+	// TC
+	CDCSerial_UpLen[CDCSerial_UpPtrIn] = 64U;
+	CDCSerial_UpPtrIn++;
+	if (CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
+	{
+		CDCSerial_UpPtrIn = 0;
+	}
+	CDCSerial_UpCntIn++;
+	DMA_Cmd(DMA1_Channel6, DISABLE);
+	xTaskNotifyFromISR(taskHandleSER, 0x01, eSetBits, NULL);
+	DMA_SetCurrDataCounter(DMA1_Channel6, 64U);
+	DMA1_Channel6->MADDR = (uint32_t)(serialBufUp[CDCSerial_UpPtrIn]);
+	if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
+	{
+		// Queue not full
+		DMA_Cmd(DMA1_Channel6, ENABLE);
+	}
+	else
+	{
+		CDCSerial_UpIdleIn = 1;
+	}
+	// Clear flag
+	DMA_ClearITPendingBit(DMA1_IT_TC6);
+}
+
+// // DMA_TX2
+// void DMA1_Channel7_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
+// void DMA1_Channel7_IRQHandler(void)
+// {
+// 	DMA_ClearITPendingBit(DMA1_IT_TC7);
+// }
+
+void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit, uint16_t stopbit)
+{
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+	// Init GPIO
+	GPIO_InitTypeDef GPIO_InitStructure = {0};
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	// Init UART
+	USART_InitTypeDef USART_InitStructure = {0};
+	USART_DeInit(USART2);
+	(void)(USART2->STATR);
+	(void)(USART2->DATAR);
+	USART_InitStructure.USART_BaudRate = baudrate;
+	USART_InitStructure.USART_WordLength = databit;
+	USART_InitStructure.USART_StopBits = stopbit;
+	USART_InitStructure.USART_Parity = paritybit;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	USART_Init(USART2, &USART_InitStructure);
+	// USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);
+	USART_ITConfig(USART2, USART_IT_PE, ENABLE);
+	USART_ITConfig(USART2, USART_IT_ERR, ENABLE);
+	NVIC_SetPriority(USART2_IRQn, 6);
+	NVIC_EnableIRQ(USART2_IRQn);
+	USART_Cmd(USART2, ENABLE);
+
+	// Init DMA
+	DMA_InitTypeDef DMA_InitStructure = {0};
+	DMA_DeInit(DMA1_Channel6);
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+
+	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&USART2->DATAR);
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)serialBufUp[CDCSerial_UpPtrIn];
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+	DMA_InitStructure.DMA_BufferSize = 64U;
+	DMA_Init(DMA1_Channel6, &DMA_InitStructure);
+	DMA_ITConfig(DMA1_Channel6, DMA_IT_TC, ENABLE);
+	NVIC_SetPriority(DMA1_Channel6_IRQn, 6);
+	NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+	DMA_Cmd(DMA1_Channel6, ENABLE);
+	USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
+}
+
 void task_SER(void *pvParameters)
 {
-	vTaskSuspend(NULL);
+	int32_t waitFlag;
+	uint32_t notifyFlag;
+	uint8_t n;
+	// vTaskSuspend(NULL);
 	while (1)
 	{
-		;
+		waitFlag = xTaskNotifyWait(0x0, 0xffffffffUL, &notifyFlag, portMAX_DELAY);
+		if (notifyFlag & 0x00000001UL)
+		{
+			// Up data in queue
+			if (CDCSerial_UpIdleOut) // if USB Idle
+			{
+				if (CDCSerial_UpCntIn != CDCSerial_UpCntOut) // if Queue not empty
+				{
+					n = CDCSerial_UpPtrOut++;
+					if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
+					{
+						CDCSerial_UpPtrOut = 0U;
+					}
+					CDCSerial_UpCntOut++;
+
+					CDCSerial_UpIdleOut = 0U;
+					CDCSerial_EPUpload(serialBufUp[n], CDCSerial_UpLen[n]);
+				}
+			}
+		}
 	}
 	vTaskDelete(NULL);
 }
 #endif
-

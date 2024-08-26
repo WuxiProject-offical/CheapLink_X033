@@ -35,7 +35,7 @@ volatile uint8_t USBFS_DevSleepStatus;
 volatile uint8_t USBFS_DevEnumStatus;
 
 /* Endpoint Buffer */
-__attribute__((aligned(4)))       uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
+__attribute__((aligned(4)))    uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
 
 /* USB IN Endpoint Busy Flag */
 volatile uint8_t USBFS_Endp_Busy[DEF_UEP_NUM];
@@ -58,10 +58,12 @@ void USBFS_RCC_Init(void)
 }
 
 #if DAP_WITH_CDC
-extern volatile uint8_t CDC_linecoding[8];
+volatile uint8_t CDC_linecoding[8];
 extern void CDCSerial_EpOUT_Handler(uint8_t len);
 extern void CDCSerial_EpIN_Handler();
 extern void CDCSerial_QueueReset();
+extern void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit,
+		uint16_t paritybit, uint16_t stopbit);
 #endif
 
 /*********************************************************************
@@ -355,9 +357,8 @@ void USBFS_IRQHandler(void)
 							!= USB_REQ_TYP_STANDARD)
 					{
 						/* Non-standard request end-point 0 Data download */
-#if DAP_WITH_CDC
 						USBFS_SetupReqLen = 0;
-						/* Non-standard request end-point 0 Data download */
+#if DAP_WITH_CDC
 						if (USBFS_SetupReqCode == CDC_SET_LINE_CODING)
 						{
 							/* Save relevant parameters such as serial port baud rate */
@@ -374,7 +375,67 @@ void USBFS_IRQHandler(void)
 							CDC_linecoding[5] = USBFS_EP0_4Buf[5];
 							CDC_linecoding[6] = USBFS_EP0_4Buf[6];
 
-							// SerialInit();
+							uint32_t baudrate = USBFS_EP0_4Buf[0];
+							baudrate += ((uint32_t) USBFS_EP0_4Buf[1] << 8);
+							baudrate += ((uint32_t) USBFS_EP0_4Buf[2] << 16);
+							baudrate += ((uint32_t) USBFS_EP0_4Buf[3] << 24);
+							uint16_t databit = USBFS_EP0_4Buf[6], paritybit =
+									USBFS_EP0_4Buf[5], stopbit =
+									USBFS_EP0_4Buf[4];
+							if (baudrate < 800UL || baudrate > 1000000UL)
+							{
+								// 800-1M
+								USBFS_SetupReqLen = 1;
+								USBFSD->UEP0_TX_LEN = 0;
+								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG
+										| USBFS_UEP_T_RES_STALL;
+							}
+							else if (databit != 0 && databit != 8
+									&& databit != 9)
+							{
+								// 8,9
+								USBFS_SetupReqLen = 1;
+								USBFSD->UEP0_TX_LEN = 0;
+								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG
+										| USBFS_UEP_T_RES_STALL;
+							}
+							else if (paritybit > 2)
+							{
+								// N,O,E
+								USBFS_SetupReqLen = 1;
+								USBFSD->UEP0_TX_LEN = 0;
+								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG
+										| USBFS_UEP_T_RES_STALL;
+							}
+							else if (stopbit > 2)
+							{
+								// 1,1.5,2
+								USBFS_SetupReqLen = 1;
+								USBFSD->UEP0_TX_LEN = 0;
+								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG
+										| USBFS_UEP_T_RES_STALL;
+							}
+							else
+							{
+								if (databit == 8 || databit == 0)
+									databit = USART_WordLength_8b;
+								else if (databit == 9)
+									databit = USART_WordLength_9b;
+								if (paritybit == 0)
+									paritybit = USART_Parity_No;
+								else if (paritybit == 1)
+									paritybit = USART_Parity_Odd;
+								else if (paritybit == 2)
+									paritybit = USART_Parity_Even;
+								if (stopbit == 0)
+									stopbit = USART_StopBits_1;
+								else if (stopbit == 1)
+									stopbit = USART_StopBits_1_5;
+								else if (stopbit == 2)
+									stopbit = USART_StopBits_2;
+								CDCSerial_InitUART(baudrate, databit, paritybit,
+										stopbit);
+							}
 						}
 #endif
 					}
@@ -439,12 +500,9 @@ void USBFS_IRQHandler(void)
 						break;
 
 					case CDC_SET_LINE_CODING:
-						break;
-
 					case CDC_SET_LINE_CTLSTE:
-						break;
-
 					case CDC_SEND_BREAK:
+						len = USBFS_SetupReqLen; //?
 						break;
 #endif
 
