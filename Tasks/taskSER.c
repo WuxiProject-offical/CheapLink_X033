@@ -22,21 +22,21 @@
 #include <ch32x035.h>
 #include "ch32x035_usbfs_device.h"
 
-__attribute__((aligned(4)))
-TaskHandle_t taskHandleSER = NULL;
+TaskHandle_t taskHandleSER __attribute__((aligned(4)));
 
 #define CDCSER_QUEUEUP_LEN 4
 #define CDCSER_QUEUEDOWN_LEN 4
 
-__attribute__((aligned(4))) volatile uint8_t serialBufUp[CDCSER_QUEUEUP_LEN][64];
-__attribute__((aligned(4))) volatile uint8_t serialBufDown[CDCSER_QUEUEDOWN_LEN][64];
+volatile uint8_t serialBufUp[CDCSER_QUEUEUP_LEN][64] __attribute__((aligned(4)));
+volatile uint8_t serialBufDown[CDCSER_QUEUEDOWN_LEN][64] __attribute__((aligned(4)));
 static volatile uint8_t CDCSerial_UpLen[4], CDCSerial_DownLen[4];
-static volatile uint8_t CDCSerial_UpPtrIn = 0, CDCSerial_UpPtrOut = 0,
-						CDCSerial_UpCntIn = 0, CDCSerial_UpCntOut = 0;
-static volatile uint8_t CDCSerial_DownPtrIn = 0, CDCSerial_DownPtrOut = 0,
-						CDCSerial_DownCntIn = 0, CDCSerial_DownCntOut = 0;
-static volatile uint8_t CDCSerial_UpIdleIn = 1, CDCSerial_UpIdleOut = 1,
-						CDCSerial_DownIdleIn = 1, CDCSerial_DownIdleOut = 1;
+static volatile uint8_t CDCSerial_UpPtrIn = 0, CDCSerial_UpPtrOut = 0;
+static volatile uint8_t CDCSerial_UpCntIn = 0, CDCSerial_UpCntOut = 0;
+static volatile uint8_t CDCSerial_DownPtrIn = 0, CDCSerial_DownPtrOut = 0;
+static volatile uint8_t CDCSerial_DownCntIn = 0, CDCSerial_DownCntOut = 0;
+static volatile uint8_t CDCSerial_UpIdleIn = 1, CDCSerial_UpIdleOut = 1;
+static volatile uint8_t CDCSerial_DownIdleIn = 1, CDCSerial_DownIdleOut = 1;
+
 static volatile uint32_t CDCSerial_LastUpLen = 0;
 
 extern volatile uint8_t USBFS_Endp_Busy[];
@@ -57,7 +57,7 @@ void CDCSerial_SetEPDNAddr(uint8_t *buffer)
 // Control the OUT(downstream) endpoint ACK status.
 void CDCSerial_SetEPDNAck(FunctionalState state)
 {
-	if (DISABLE == state)
+	if(DISABLE == state)
 	{
 		// NAK
 		USBFSD->UEP5_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
@@ -114,12 +114,12 @@ void CDCSerial_EpOUT_Handler(uint8_t len)
 
 void CDCSerial_EpIN_Handler()
 {
-	if (CDCSerial_UpCntIn != CDCSerial_UpCntOut)
+	if(CDCSerial_UpCntIn != CDCSerial_UpCntOut)
 	{
 		// left packets in queue
 		CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
 		CDCSerial_UpPtrOut++;
-		if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
+		if(CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
 		{
 			CDCSerial_UpPtrOut = 0U;
 		}
@@ -128,16 +128,16 @@ void CDCSerial_EpIN_Handler()
 	else
 	{
 		// empty queue
-		if (CDCSerial_LastUpLen == 64)
+		if(CDCSerial_LastUpLen == 64)
 		{
 			// need another zero-len packet
 			CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut - 1], 0);
 		}
 		CDCSerial_UpIdleOut = 1;
 	}
-	if (CDCSerial_UpIdleIn) // if UART paused
+	if(CDCSerial_UpIdleIn) // if UART paused
 	{
-		if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN) // if Queue not full
+		if((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN) // if Queue not full
 		{
 			// start UART recv
 			CDCSerial_UpIdleIn = 0U;
@@ -170,16 +170,16 @@ void CDCSerial_QueueReset()
 void USART2_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 void USART2_IRQHandler(void)
 {
-	if (USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
+	if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
 	{
 		// Idle
-		if (CDCSerial_UpIdleIn)
+		if(CDCSerial_UpIdleIn)
 		{
 			;
 		}
 		else
 		{
-			if (DMA1_Channel6->CNTR > 0)
+			if(DMA1_Channel6->CNTR > 0)
 			{
 				// only handle unfinished DMA
 				DMA1_Channel6->CFGR &= (uint16_t)(~DMA_CFGR1_EN);
@@ -187,12 +187,12 @@ void USART2_IRQHandler(void)
 				uint16_t rxCnt = (64U - DMA1_Channel6->CNTR);
 				CDCSerial_UpLen[CDCSerial_UpPtrIn] = rxCnt;
 				CDCSerial_UpPtrIn++;
-				if (CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
+				if(CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
 				{
 					CDCSerial_UpPtrIn = 0;
 				}
 				CDCSerial_UpCntIn++;
-				if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
+				if((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
 				{
 					// Queue not full
 					DMA_SetCurrDataCounter(DMA1_Channel6, 64U);
@@ -208,28 +208,28 @@ void USART2_IRQHandler(void)
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
-	if (USART_GetITStatus(USART2, USART_IT_PE) != RESET)
+	if(USART_GetITStatus(USART2, USART_IT_PE) != RESET)
 	{
 		// Parity Err
 
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
-	if (USART_GetITStatus(USART2, USART_IT_ORE_ER))
+	if(USART_GetITStatus(USART2, USART_IT_ORE_ER))
 	{
 		// Overrun
 
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
-	if (USART_GetITStatus(USART2, USART_IT_NE))
+	if(USART_GetITStatus(USART2, USART_IT_NE))
 	{
 		// Noise
 
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
-	if (USART_GetITStatus(USART2, USART_IT_FE))
+	if(USART_GetITStatus(USART2, USART_IT_FE))
 	{
 		// Frame err
 
@@ -242,13 +242,13 @@ void USART2_IRQHandler(void)
 void DMA1_Channel6_IRQHandler(void) __attribute__((interrupt())) __attribute__((section(".highcode")));
 void DMA1_Channel6_IRQHandler(void)
 {
-	if (DMA_GetITStatus(DMA1_IT_TC6) != RESET)
+	if(DMA_GetITStatus(DMA1_IT_TC6) != RESET)
 	{
 		// TC
 		DMA1_Channel6->CFGR &= (uint16_t)(~DMA_CFGR1_EN);
 		DMA1->INTFCR = DMA1_IT_TC6;
 		CDCSerial_UpCntIn++;
-		if ((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
+		if((uint8_t)(CDCSerial_UpCntIn - CDCSerial_UpCntOut) != CDCSER_QUEUEUP_LEN)
 		{
 			// Queue not full
 			DMA1_Channel6->CNTR = 64U;
@@ -261,18 +261,18 @@ void DMA1_Channel6_IRQHandler(void)
 		}
 		CDCSerial_UpLen[CDCSerial_UpPtrIn] = 64U;
 		CDCSerial_UpPtrIn++;
-		if (CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
+		if(CDCSerial_UpPtrIn >= CDCSER_QUEUEUP_LEN) // loopback
 		{
 			CDCSerial_UpPtrIn = 0;
 		}
-		if (CDCSerial_UpIdleOut) // if USB Idle
+		if(CDCSerial_UpIdleOut) // if USB Idle
 		{
-			if (CDCSerial_UpCntIn != CDCSerial_UpCntOut) // if Queue not empty
+			if(CDCSerial_UpCntIn != CDCSerial_UpCntOut) // if Queue not empty
 			{
 				CDCSerial_UpIdleOut = 0U;
 				CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
 				CDCSerial_UpPtrOut++;
-				if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
+				if(CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
 				{
 					CDCSerial_UpPtrOut = 0U;
 				}
@@ -296,7 +296,7 @@ void DMA1_Channel6_IRQHandler(void)
 // }
 
 void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
-						uint16_t stopbit)
+                        uint16_t stopbit)
 {
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
@@ -304,7 +304,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 
 	// Init GPIO
 	GPIO_InitTypeDef GPIO_InitStructure =
-		{0};
+	            { 0 };
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -315,7 +315,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 
 	// Init UART
 	USART_InitTypeDef USART_InitStructure =
-		{0};
+	            { 0 };
 	USART_DeInit(USART2);
 	(void)(USART2->STATR);
 	(void)(USART2->DATAR);
@@ -324,7 +324,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 	USART_InitStructure.USART_StopBits = stopbit;
 	USART_InitStructure.USART_Parity = paritybit;
 	USART_InitStructure.USART_HardwareFlowControl =
-		USART_HardwareFlowControl_None;
+	USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
 	USART_Init(USART2, &USART_InitStructure);
 	USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);
@@ -336,7 +336,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 
 	// Init DMA
 	DMA_InitTypeDef DMA_InitStructure =
-		{0};
+	            { 0 };
 	DMA_DeInit(DMA1_Channel6);
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
@@ -348,7 +348,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&USART2->DATAR);
 	DMA_InitStructure.DMA_MemoryBaseAddr =
-		(uint32_t)serialBufUp[CDCSerial_UpPtrIn];
+	        (uint32_t)serialBufUp[CDCSerial_UpPtrIn];
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
 	DMA_InitStructure.DMA_BufferSize = 64U;
 	DMA_Init(DMA1_Channel6, &DMA_InitStructure);

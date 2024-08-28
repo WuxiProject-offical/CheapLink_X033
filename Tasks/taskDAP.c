@@ -23,8 +23,7 @@
 extern TaskHandle_t taskHandleLED;
 extern uint8_t USBQueue_DoProcess();
 
-__attribute__((aligned(4)))
- TaskHandle_t taskHandleDAP = NULL;
+TaskHandle_t taskHandleDAP __attribute__((aligned(4)));
 void task_DAP(void *pvParameters)
 {
 	xTaskNotify(taskHandleLED, 0x32, eSetValueWithOverwrite); // LED: Yellow 1Hz

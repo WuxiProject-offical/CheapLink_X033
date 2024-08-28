@@ -19,8 +19,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-__attribute__((aligned(4)))
- TaskHandle_t taskHandleLED = NULL;
+TaskHandle_t taskHandleLED __attribute__((aligned(4)));
 void task_LED(void *pvParameters)
 {
 	volatile uint8_t i = 0, LED_State = 0;
@@ -212,11 +211,17 @@ void task_LED(void *pvParameters)
 			i = 0;
 			LED_State = notify & 0x000000ff;
 			if ((LED_State & 0x0f) == 0x02)
-			flashDelayTicks = pdMS_TO_TICKS(500);
+			{
+				flashDelayTicks = pdMS_TO_TICKS(500);
+			}
 			else if ((LED_State & 0x0f) == 0x03)
-			flashDelayTicks = pdMS_TO_TICKS(200);
+			{
+				flashDelayTicks = pdMS_TO_TICKS(200);
+			}
 			else
-			flashDelayTicks = portMAX_DELAY;
+			{
+				flashDelayTicks = portMAX_DELAY;
+			}
 		}
 	}
 	vTaskDelete(NULL);
