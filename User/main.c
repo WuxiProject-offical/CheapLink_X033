@@ -43,8 +43,8 @@ int main(void)
     Delay_Init();
     USART_Printf_Init(921600);
     // SDI_Printf_Enable();
-    printf("SystemClk:%d\r\n", SystemCoreClock);
-    printf("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
+    PRINT("SystemClk:%d\r\n", SystemCoreClock);
+    PRINT("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
 
     char snbuf[9];
     snprintf(snbuf, 9, "%08X", (X035CHIPSN1 ^ ~X035CHIPSN2));
