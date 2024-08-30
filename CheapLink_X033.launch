@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="com.mounriver.debug.gdbjtag.openocd.launchConfigurationType">
-<stringAttribute key="com.mounriver.debug.gdbjtag.openocd.PERIPHERALS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#13;&#10;&lt;peripherals&gt;&#13;&#10;&lt;peripheral name=&quot;DMA&quot;/&gt;&#13;&#10;&lt;/peripherals&gt;&#13;&#10;"/>
+<stringAttribute key="com.mounriver.debug.gdbjtag.openocd.PERIPHERALS" value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&#13;&#10;&lt;peripherals&gt;&#13;&#10;&lt;peripheral name=&quot;USBFS&quot;/&gt;&#13;&#10;&lt;peripheral name=&quot;DMA&quot;/&gt;&#13;&#10;&lt;/peripherals&gt;&#13;&#10;"/>
 <booleanAttribute key="com.mounriver.debug.gdbjtag.openocd.doContinue" value="true"/>
 <booleanAttribute key="com.mounriver.debug.gdbjtag.openocd.doDebugInRam" value="false"/>
 <booleanAttribute key="com.mounriver.debug.gdbjtag.openocd.doFirstReset" value="true"/>
@@ -50,7 +50,7 @@
 <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="obj\CheapLink_X033.elf"/>
 <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="CheapLink_X033"/>
 <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="true"/>
-<stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value=""/>
+<stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.release.1008047074"/>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
 <listEntry value="/CheapLink_X033"/>
 </listAttribute>
