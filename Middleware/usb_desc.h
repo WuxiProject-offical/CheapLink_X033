@@ -60,7 +60,7 @@
 #define DEF_USBD_MANU_DESC_LEN       ((uint16_t)MyManuInfo[0])
 #define DEF_USBD_PROD_DESC_LEN       ((uint16_t)MyProdInfo[0])
 #define DEF_USBD_SN_DESC_LEN         ((uint16_t)MySerNumInfo[0])
-#define DEF_USBD_BOS_DESC_LEN         33
+#define DEF_USBD_BOS_DESC_LEN        33
 
 /******************************************************************************/
 /* external variables */
