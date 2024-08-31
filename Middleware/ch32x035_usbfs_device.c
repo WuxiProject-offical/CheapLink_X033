@@ -58,7 +58,7 @@ void USBFS_RCC_Init(void)
 }
 
 #if DAP_WITH_CDC
-volatile uint8_t CDC_linecoding[8];
+uint8_t CDC_linecoding[8];
 extern void CDCSerial_EpOUT_Handler(uint8_t len);
 extern void CDCSerial_EpIN_Handler();
 extern void CDCSerial_QueueReset();
