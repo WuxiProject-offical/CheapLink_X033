@@ -75,8 +75,8 @@ void USBQueue_SetEPDNAck(FunctionalState state)
 
 #define MEMCLEAR(x) (memset((x), 0x00, sizeof((x))))
 
-__attribute__((aligned(4))) volatile uint8_t UQ_InQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
-__attribute__((aligned(4))) volatile uint8_t UQ_OutQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX];
+volatile uint8_t UQ_InQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX] __attribute__((aligned(4)));
+volatile uint8_t UQ_OutQueue[UQ_QUEUELEN][UQ_PACKLEN_MAX] __attribute__((aligned(4)));
 static volatile uint8_t UQ_InLen[UQ_QUEUELEN], UQ_OutLen[UQ_QUEUELEN];
 static volatile uint8_t UQ_InPtrIn = 0, UQ_InPtrOut = 0;
 static volatile uint8_t UQ_InCntIn = 0, UQ_InCntOut = 0;

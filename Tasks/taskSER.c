@@ -27,9 +27,9 @@ TaskHandle_t taskHandleSER __attribute__((aligned(4)));
 #define CDCSER_QUEUEUP_LEN 4
 #define CDCSER_QUEUEDOWN_LEN 4
 
-volatile uint8_t serialBufUp[CDCSER_QUEUEUP_LEN][64] __attribute__((aligned(4)));
-volatile uint8_t serialBufDown[CDCSER_QUEUEDOWN_LEN][64] __attribute__((aligned(4)));
-static volatile uint8_t CDCSerial_UpLen[4], CDCSerial_DownLen[4];
+volatile uint8_t CDCQueueUp[CDCSER_QUEUEUP_LEN][64] __attribute__((aligned(4)));
+volatile uint8_t CDCQueueDown[CDCSER_QUEUEDOWN_LEN][64] __attribute__((aligned(4)));
+static volatile uint8_t CDCSerial_UpLen[CDCSER_QUEUEUP_LEN], CDCSerial_DownLen[CDCSER_QUEUEDOWN_LEN];
 static volatile uint8_t CDCSerial_UpPtrIn = 0, CDCSerial_UpPtrOut = 0;
 static volatile uint8_t CDCSerial_UpCntIn = 0, CDCSerial_UpCntOut = 0;
 static volatile uint8_t CDCSerial_DownPtrIn = 0, CDCSerial_DownPtrOut = 0;
@@ -82,7 +82,7 @@ void CDCSerial_EpOUT_Handler(uint8_t len)
 	CDCSerial_DownCntIn++;
 	if ((uint8_t)(CDCSerial_DownCntIn - CDCSerial_DownCntOut) != CDCSER_QUEUEDOWN_LEN)
 	{
-		CDCSerial_SetEPDNAddr(serialBufDown[CDCSerial_DownPtrIn]);
+		CDCSerial_SetEPDNAddr(CDCQueueDown[CDCSerial_DownPtrIn]);
 		CDCSerial_SetEPDNAck(ENABLE);
 	}
 	else
@@ -105,7 +105,7 @@ void CDCSerial_EpIN_Handler()
 	if (CDCSerial_UpCntIn != CDCSerial_UpCntOut)
 	{
 		// left packets in queue
-		CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
+		CDCSerial_EPUpload(CDCQueueUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
 		CDCSerial_UpPtrOut++;
 		if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
 		{
@@ -119,7 +119,7 @@ void CDCSerial_EpIN_Handler()
 		if (CDCSerial_LastUpLen == 64)
 		{
 			// need another zero-len packet
-			CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut - 1], 0);
+			CDCSerial_EPUpload(CDCQueueUp[CDCSerial_UpPtrOut - 1], 0);
 		}
 		CDCSerial_UpIdleOut = 1;
 	}
@@ -130,7 +130,7 @@ void CDCSerial_EpIN_Handler()
 			// start UART recv
 			CDCSerial_UpIdleIn = 0U;
 			DMA_SetCurrDataCounter(DMA1_Channel6, 64U);
-			DMA1_Channel6->MADDR = (uint32_t)(serialBufUp[CDCSerial_UpPtrIn]);
+			DMA1_Channel6->MADDR = (uint32_t)(CDCQueueUp[CDCSerial_UpPtrIn]);
 			DMA_Cmd(DMA1_Channel6, ENABLE);
 		}
 	}
@@ -140,8 +140,8 @@ void CDCSerial_EpIN_Handler()
 
 void CDCSerial_QueueReset()
 {
-	MEMCLEAR(serialBufUp);
-	MEMCLEAR(serialBufDown);
+	MEMCLEAR(CDCQueueUp);
+	MEMCLEAR(CDCQueueDown);
 	MEMCLEAR(CDCSerial_UpLen);
 	MEMCLEAR(CDCSerial_DownLen);
 	CDCSerial_UpPtrIn = CDCSerial_UpPtrOut = 0;
@@ -150,7 +150,7 @@ void CDCSerial_QueueReset()
 	CDCSerial_DownCntIn = CDCSerial_DownCntOut = 0;
 	CDCSerial_UpIdleIn = CDCSerial_UpIdleOut = 1;
 	CDCSerial_DownIdleIn = CDCSerial_DownIdleOut = 1;
-	CDCSerial_SetEPDNAddr(serialBufDown[CDCSerial_DownPtrIn]);
+	CDCSerial_SetEPDNAddr(CDCQueueDown[CDCSerial_DownPtrIn]);
 	CDCSerial_SetEPDNAck(ENABLE);
 	// If other reset operation required, process below.
 }
@@ -184,7 +184,7 @@ void USART2_IRQHandler(void)
 				{
 					// Queue not full
 					DMA_SetCurrDataCounter(DMA1_Channel6, 64U);
-					DMA1_Channel6->MADDR = (uint32_t)(serialBufUp[CDCSerial_UpPtrIn]);
+					DMA1_Channel6->MADDR = (uint32_t)(CDCQueueUp[CDCSerial_UpPtrIn]);
 					DMA_Cmd(DMA1_Channel6, ENABLE);
 				}
 				else
@@ -240,7 +240,7 @@ void DMA1_Channel6_IRQHandler(void)
 		{
 			// Queue not full
 			DMA1_Channel6->CNTR = 64U;
-			DMA1_Channel6->MADDR = (uint32_t)(serialBufUp[CDCSerial_UpPtrIn]);
+			DMA1_Channel6->MADDR = (uint32_t)(CDCQueueUp[CDCSerial_UpPtrIn]);
 			DMA1_Channel6->CFGR |= DMA_CFGR1_EN;
 		}
 		else
@@ -276,7 +276,7 @@ void DMA1_Channel7_IRQHandler(void)
 		{
 			// left packets in queue
 			DMA_SetCurrDataCounter(DMA1_Channel7, CDCSerial_DownLen[CDCSerial_DownPtrOut]);
-			DMA1_Channel7->MADDR = (uint32_t)(serialBufDown[CDCSerial_DownPtrOut]);
+			DMA1_Channel7->MADDR = (uint32_t)(CDCQueueDown[CDCSerial_DownPtrOut]);
 			DMA_Cmd(DMA1_Channel7, ENABLE);
 			CDCSerial_DownPtrOut++;
 			if (CDCSerial_DownPtrOut >= CDCSER_QUEUEDOWN_LEN) // loopback
@@ -296,7 +296,7 @@ void DMA1_Channel7_IRQHandler(void)
 			{
 				// start USB recv
 				CDCSerial_DownIdleIn = 0U;
-				CDCSerial_SetEPDNAddr(serialBufDown[CDCSerial_DownPtrIn]);
+				CDCSerial_SetEPDNAddr(CDCQueueDown[CDCSerial_DownPtrIn]);
 				CDCSerial_SetEPDNAck(ENABLE);
 			}
 		}
@@ -354,7 +354,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&USART2->DATAR);
-	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)serialBufUp[CDCSerial_UpPtrIn];
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)CDCQueueUp[CDCSerial_UpPtrIn];
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
 	DMA_InitStructure.DMA_BufferSize = 64U;
 	DMA_Init(DMA1_Channel6, &DMA_InitStructure);
@@ -369,7 +369,7 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 	USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
 
 	DMA_DeInit(DMA1_Channel7);
-	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)serialBufDown[CDCSerial_DownPtrOut];
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)CDCQueueDown[CDCSerial_DownPtrOut];
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
 	DMA_Init(DMA1_Channel7, &DMA_InitStructure);
@@ -396,7 +396,7 @@ void task_SER(void *pvParameters)
 			// Downstream packet pending
 			CDCSerial_DownIdleOut = 0U;
 			DMA_SetCurrDataCounter(DMA1_Channel7, CDCSerial_DownLen[CDCSerial_DownPtrOut]);
-			DMA1_Channel7->MADDR = (uint32_t)(serialBufDown[CDCSerial_DownPtrOut]);
+			DMA1_Channel7->MADDR = (uint32_t)(CDCQueueDown[CDCSerial_DownPtrOut]);
 			DMA_Cmd(DMA1_Channel7, ENABLE);
 			CDCSerial_DownPtrOut++;
 			if (CDCSerial_DownPtrOut >= CDCSER_QUEUEDOWN_LEN) // loopback
@@ -409,7 +409,7 @@ void task_SER(void *pvParameters)
 		{
 			// Upstream packet pending
 			CDCSerial_UpIdleOut = 0U;
-			CDCSerial_EPUpload(serialBufUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
+			CDCSerial_EPUpload(CDCQueueUp[CDCSerial_UpPtrOut], CDCSerial_UpLen[CDCSerial_UpPtrOut]);
 			CDCSerial_UpPtrOut++;
 			if (CDCSerial_UpPtrOut >= CDCSER_QUEUEUP_LEN) // loopback
 			{
