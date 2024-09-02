@@ -82,8 +82,6 @@ extern volatile uint8_t  USBFS_DevAddr;
 extern volatile uint8_t  USBFS_DevSleepStatus;
 extern volatile uint8_t  USBFS_DevEnumStatus;
 
-//extern __attribute__ ((aligned(4))) uint8_t USBFS_EP6_Buf[ ];
-
 /* USB IN Endpoint Busy Flag */
 extern volatile uint8_t  USBFS_Endp_Busy[ ];
 

@@ -31,7 +31,7 @@ extern "C" {
 
 /* DEBUG UATR Definition */
 #ifndef DEBUG
-#define DEBUG   DEBUG_UART1_REMAP1
+//#define DEBUG   DEBUG_UART1_REMAP1
 #endif
 
 /* SDI Printf Definition */
