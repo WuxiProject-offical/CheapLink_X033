@@ -35,7 +35,7 @@ volatile uint8_t USBFS_DevSleepStatus;
 volatile uint8_t USBFS_DevEnumStatus;
 
 /* Endpoint Buffer */
-__attribute__((aligned(4))) uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE];
+uint8_t USBFS_EP0_4Buf[DEF_USBD_UEP0_SIZE] __attribute__((aligned(4)));
 
 /* USB IN Endpoint Busy Flag */
 volatile uint8_t USBFS_Endp_Busy[DEF_UEP_NUM];
