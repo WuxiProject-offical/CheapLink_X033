@@ -1,5 +1,5 @@
 /*
- *  Task_DAP source file for firmware of CheapLink_X033
+ *  Task-DAP source file for firmware of CheapLink_X033
  *  Copyright (C) 2022-2024  WuxiProject
  *
  *  This program is free software: you can redistribute it and/or modify
