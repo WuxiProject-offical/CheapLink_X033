@@ -66,11 +66,11 @@ int main(void)
     xTaskCreate((TaskFunction_t)task_LED, (const char *)"LED", (uint16_t)128,
                 (void *)NULL,
                 (UBaseType_t)1, (TaskHandle_t *)&taskHandleLED);
-    xTaskCreate((TaskFunction_t)task_DAP, (const char *)"DAP", (uint16_t)256,
+    xTaskCreate((TaskFunction_t)task_DAP, (const char *)"DAP", (uint16_t)128,
                 (void *)NULL,
                 (UBaseType_t)3, (TaskHandle_t *)&taskHandleDAP);
 #if DAP_WITH_CDC
-    xTaskCreate((TaskFunction_t)task_SER, (const char *)"SER", (uint16_t)256,
+    xTaskCreate((TaskFunction_t)task_SER, (const char *)"SER", (uint16_t)128,
                 (void *)NULL,
                 (UBaseType_t)3, (TaskHandle_t *)&taskHandleSER);
 #endif
