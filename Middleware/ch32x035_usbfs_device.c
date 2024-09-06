@@ -373,9 +373,9 @@ void USBFS_IRQHandler(void)
 								USBFSD->UEP0_TX_LEN = 0;
 								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_STALL;
 							}
-							else if (databit != 0 && databit != 8 && databit != 9)
+							else if (databit != 0 && databit != 8)
 							{
-								// 8,9
+								// 8
 								USBFS_SetupReqLen = 1;
 								USBFSD->UEP0_TX_LEN = 0;
 								USBFSD->UEP0_CTRL_H = USBFS_UEP_T_TOG | USBFS_UEP_T_RES_STALL;
@@ -398,14 +398,18 @@ void USBFS_IRQHandler(void)
 							{
 								if (databit == 8 || databit == 0)
 									databit = USART_WordLength_8b;
-								else if (databit == 9)
-									databit = USART_WordLength_9b;
 								if (paritybit == 0)
 									paritybit = USART_Parity_No;
 								else if (paritybit == 1)
+								{
 									paritybit = USART_Parity_Odd;
+									databit = USART_WordLength_9b;
+								}
 								else if (paritybit == 2)
+								{
 									paritybit = USART_Parity_Even;
+									databit = USART_WordLength_9b;
+								}
 								if (stopbit == 0)
 									stopbit = USART_StopBits_1;
 								else if (stopbit == 1)
