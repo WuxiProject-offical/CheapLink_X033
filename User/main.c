@@ -41,14 +41,19 @@ int main(void)
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
     SystemCoreClockUpdate();
     Delay_Init();
-    // USART_Printf_Init(921600);
-    // SDI_Printf_Enable();
-    // PRINT("SystemClk:%d\r\n", SystemCoreClock);
-    // PRINT("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
+#if DEBUG
+#if SDI_PRINT == SDI_PR_CLOSE
+    USART_Printf_Init(921600);
+#else
+    SDI_Printf_Enable();
+#endif
+    PRINT("SystemClk:%d\r\n", SystemCoreClock);
+    PRINT("ChipID:%08x\r\n", DBGMCU_GetCHIPID());
+#endif
 
     char snbuf[9];
     snprintf(snbuf, 9, "%08X", (X035CHIPSN1 ^ ~X035CHIPSN2));
-    for(uint8_t i = 0; i < 8; i++)
+    for (uint8_t i = 0; i < 8; i++)
     {
         MySerNumInfo[12 + 2 * i] = snbuf[i];
     }
@@ -59,14 +64,14 @@ int main(void)
     DAP_Setup();
 
     xTaskCreate((TaskFunction_t)task_LED, (const char *)"LED", (uint16_t)128,
-                (void *) NULL,
+                (void *)NULL,
                 (UBaseType_t)1, (TaskHandle_t *)&taskHandleLED);
-    xTaskCreate((TaskFunction_t)task_DAP, (const char *)"DAP", (uint16_t)256,
-                (void *) NULL,
+    xTaskCreate((TaskFunction_t)task_DAP, (const char *)"DAP", (uint16_t)128,
+                (void *)NULL,
                 (UBaseType_t)3, (TaskHandle_t *)&taskHandleDAP);
 #if DAP_WITH_CDC
-    xTaskCreate((TaskFunction_t)task_SER, (const char *)"SER", (uint16_t)256,
-                (void *) NULL,
+    xTaskCreate((TaskFunction_t)task_SER, (const char *)"SER", (uint16_t)128,
+                (void *)NULL,
                 (UBaseType_t)3, (TaskHandle_t *)&taskHandleSER);
 #endif
 
