@@ -10,6 +10,7 @@ A cheap CMSIS-DAP debugger implemention.
 - [x] Auto driver installation (requires Win10 or later)
 - [x] SWD debugging
 - [x] CDC serial up to 1M baudrate (only supports 8Nx,8Ex,8Ox)
+- [ ] Faster DAP transaction
 
 ## License
 

@@ -10,6 +10,7 @@ To read English version of this file，please turn to [README.zh-cn.md](README.z
 - [x] 无需手动安装驱动（Win10或更高版本）
 - [x] SWD调试协议
 - [x] 高达1M波特率的CDC串口（仅支持8位数据位下无校验、奇校验、偶校验）
+- [ ] 更快速的DAP传输
 
 ## License
 
