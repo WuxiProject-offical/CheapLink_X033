@@ -416,8 +416,7 @@ void USBFS_IRQHandler(void)
 									stopbit = USART_StopBits_1_5;
 								else if (stopbit == 2)
 									stopbit = USART_StopBits_2;
-								CDCSerial_InitUART(baudrate, databit, paritybit,
-												   stopbit);
+								CDCSerial_InitUART(baudrate, databit, paritybit, stopbit);
 							}
 						}
 #endif
