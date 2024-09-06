@@ -20,6 +20,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stream_buffer.h"
+#include "semphr.h"
 #include <ch32x035.h>
 #include "ch32x035_usbfs_device.h"
 
@@ -63,9 +64,9 @@ uint8_t CDCSerial_EPUpload(uint8_t *buf, uint16_t len)
 #if CDCSER_DOWN_ENABLE
 volatile uint8_t CDCQueueDown[2][CDCSER_EPDOWN_LEN] __attribute__((aligned(4)));
 volatile uint8_t CDC_DMATxBuf[CDCSER_DMATX_LEN];
-StreamBufferHandle_t sbDown = NULL;
 static volatile uint8_t CDCSerial_DownPtrUsb = 0;
-static volatile uint8_t CDCSerial_DownIdleSer = 1;
+StreamBufferHandle_t sbDown = NULL;
+SemaphoreHandle_t semaDmaTx = NULL;
 
 // Prepare buffer for OUT transaction.
 static void CDCSerial_SetEPDNAddr(uint8_t *buffer)
@@ -76,11 +77,18 @@ static void CDCSerial_SetEPDNAddr(uint8_t *buffer)
 // Control the OUT(downstream) endpoint ACK status.
 static void CDCSerial_SetEPDNAck(FunctionalState state)
 {
-	USBFSD->UEP5_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
-	if (DISABLE == state) // NAK
+
+	if (DISABLE == state)
+	{
+		// NAK
+		USBFSD->UEP5_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
 		USBFSD->UEP5_CTRL_H |= USBFS_UEP_R_RES_NAK;
-	else // ACK
+	}
+	else
+	{ // ACK
+		USBFSD->UEP5_CTRL_H &= ~USBFS_UEP_R_RES_MASK;
 		USBFSD->UEP5_CTRL_H |= USBFS_UEP_R_RES_ACK;
+	}
 }
 #endif
 
@@ -95,9 +103,8 @@ void CDCSerial_EpOUT_Handler(uint8_t len)
 	CDCSerial_SetEPDNAddr(CDCQueueDown[CDCSerial_DownPtrUsb]);
 	// Push buffer
 	xStreamBufferSendFromISR(sbDown, CDCQueueDown[!CDCSerial_DownPtrUsb], len, NULL);
-	// Check idle
-	if (CDCSerial_DownIdleSer) // if UART Idle
-		xTaskNotifyFromISR(taskHandleSER, 0x01, eSetBits, NULL);
+	// Send notification
+	xTaskNotifyFromISR(taskHandleSER, 0x01, eSetBits, NULL);
 #endif
 }
 
@@ -143,12 +150,14 @@ void CDCSerial_QueueReset()
 	else
 		sbDown = xStreamBufferCreate(CDCSER_BUFFERDOWN_LEN, CDCSER_BUFFERDOWN_THRESHOLD);
 	CDCSerial_DownPtrUsb = 0;
-	CDCSerial_DownIdleSer = 1;
 	CDCSerial_SetEPDNAddr(CDCQueueDown[CDCSerial_DownPtrUsb]);
 	CDCSerial_SetEPDNAck(ENABLE);
 	DMA_Cmd(DMA1_Channel7, DISABLE);
 	DMA1_Channel7->CNTR = CDCSER_DMATX_LEN;
 	DMA1_Channel7->MADDR = (uint32_t)&CDC_DMATxBuf[0];
+	if (semaDmaTx == NULL)
+		semaDmaTx = xSemaphoreCreateBinary();
+	xSemaphoreGiveFromISR(semaDmaTx, NULL);
 #endif
 	//  If other reset operation required, process below.
 }
@@ -264,9 +273,9 @@ void DMA1_Channel7_IRQHandler(void)
 		}
 		else
 		{
-			CDCSerial_DownIdleSer = 1;
+			xSemaphoreGiveFromISR(semaDmaTx, NULL);
 		}
-		if (xStreamBufferSpacesAvailable(sbDown) >= (CDCSER_EPDOWN_LEN))
+		if (xStreamBufferSpacesAvailable(sbDown) >= (CDCSER_EPDOWN_LEN << 1U))
 			CDCSerial_SetEPDNAck(ENABLE);
 #endif
 	}
@@ -365,13 +374,19 @@ void task_SER(void *pvParameters)
 		if (notifyFlag & 0x00000001UL)
 		{ // Downstream packet pending
 #if CDCSER_DOWN_ENABLE
-			uint16_t dmaTxLen = xStreamBufferReceive(sbDown, CDC_DMATxBuf, CDCSER_DMATX_LEN, pdMS_TO_TICKS(5));
-			if (dmaTxLen)
-			{
-				DMA1_Channel7->MADDR = (uint32_t)&CDC_DMATxBuf[0];
-				DMA1_Channel7->CNTR = dmaTxLen;
-				DMA_Cmd(DMA1_Channel7, ENABLE);
-				CDCSerial_DownIdleSer = 0U;
+			if (xSemaphoreTake(semaDmaTx, pdMS_TO_TICKS(5)))
+			{ // DMA not running
+				uint16_t dmaTxLen = xStreamBufferReceive(sbDown, CDC_DMATxBuf, CDCSER_DMATX_LEN, pdMS_TO_TICKS(5));
+				if (dmaTxLen)
+				{
+					DMA1_Channel7->MADDR = (uint32_t)&CDC_DMATxBuf[0];
+					DMA1_Channel7->CNTR = dmaTxLen;
+					DMA_Cmd(DMA1_Channel7, ENABLE);
+				}
+				else
+				{ // Nothing to send
+					xSemaphoreGive(semaDmaTx);
+				}
 			}
 #endif
 		}
