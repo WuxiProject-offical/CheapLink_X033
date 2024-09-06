@@ -157,9 +157,8 @@ void USART2_IRQHandler(void) __attribute__((interrupt())); // __attribute__((sec
 void USART2_IRQHandler(void)
 {
 	if (USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
-	{
+	{ // Idle
 #if CDCSER_UP_ENABLE
-		// Idle
 		if (DMA1_Channel6->CNTR != 0 && DMA1_Channel6->CNTR != (CDCSER_DMARX_LEN >> 1))
 		{
 			// only handle unfinished DMA
@@ -190,30 +189,26 @@ void USART2_IRQHandler(void)
 		(void)USART_ReceiveData(USART2);
 	}
 	if (USART_GetITStatus(USART2, USART_IT_PE) != RESET)
-	{
-		// Parity Err
-
+	{ // Parity Err
+		;
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
 	if (USART_GetITStatus(USART2, USART_IT_ORE_ER))
-	{
-		// Overrun
-
+	{ // Overrun
+		;
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
 	if (USART_GetITStatus(USART2, USART_IT_NE))
-	{
-		// Noise
-
+	{ // Noise
+		;
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
 	if (USART_GetITStatus(USART2, USART_IT_FE))
-	{
-		// Frame err
-
+	{ // Frame err
+		;
 		// Clear flag
 		(void)USART_ReceiveData(USART2);
 	}
@@ -271,7 +266,7 @@ void DMA1_Channel7_IRQHandler(void)
 		{
 			CDCSerial_DownIdleSer = 1;
 		}
-		if (xStreamBufferBytesAvailable(sbDown) < CDCSER_DMATX_LEN)
+		if (xStreamBufferSpacesAvailable(sbDown) >= (CDCSER_EPDOWN_LEN))
 			CDCSerial_SetEPDNAck(ENABLE);
 #endif
 	}
@@ -306,7 +301,9 @@ void CDCSerial_InitUART(uint32_t baudrate, uint16_t databit, uint16_t paritybit,
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
 	USART_Init(USART2, &USART_InitStructure);
+#if CDCSER_UP_ENABLE
 	USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);
+#endif
 	USART_ITConfig(USART2, USART_IT_PE, ENABLE);
 	USART_ITConfig(USART2, USART_IT_ERR, ENABLE);
 	NVIC_SetPriority(USART2_IRQn, 6);
