@@ -9,7 +9,7 @@ A cheap CMSIS-DAP debugger implemention.
 - [x] WinUSB-based bulk transaction
 - [x] Auto driver installation (requires Win10 or later)
 - [x] SWD debugging
-- [ ] CDC serial up to 1M baudrate
+- [x] CDC serial up to 1M baudrate (only supports 8Nx,8Ex,8Ox)
 
 ## License
 
